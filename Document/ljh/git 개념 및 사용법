@@ -1,0 +1,140 @@
+Git - 버전 관리 도구.
+참고 사이트 : https://git-scm.com/book/ko/v1
+
+
+1. git 기초
+  git 은 버전 관리, 백업, 협업 등의 효과를 누릴 수 있음.
+  git 은 commit 이라는 동작을 통해 해당 프로젝트의 상태를 저장함.
+  git 은 기본적으로 local 환경에서 실행됨.
+  
+  * git의 동작 및 3가지 상태
+	working tree – 현재 working 파일들(수정 & 생성한 파일들, modified 상태, 수정한 파일이 아직 commit 되지 않았다)
+	staging area – 버전 관리하려는 파일들 (staged 상태, 곧 커밋할 것이다)
+	git directory(repository) – 버전 저장하는 곳 (committed 상태, 안전하게 저장되었다)
+	
+  git 을 통해 해야 할 일.
+    - working directory에서 파일을 수정
+	- staging area로 파일을 stage(add)해서 commit 할 스냅샷을 만든다
+	- staging area에 있는 파일들을 commit 해서 git directory에 영구적인 스냅샷으로 저장한다(버전저장)
+	
+2. git 설치
+  윈도우 : https://git-scm.com/downloads 에서 os에 맞는 설치파일 다운
+  A. 다운된 설치파일 실행
+  B. 모두 기본값으로 해서 설치 진행
+  C. git bash 라는 프로그램을 통해 git 명령어 사용 가능.
+
+  리눅스 : sudo apt-get install git (패키지는 보통 예전버전, 최신버전 설치하려면 소스코드로 설치해야함. 이하생략)
+  A. git 명령어를 통해 사용 가능.
+
+
+3. git 최초 설정
+  git 환경설정은 git config를 통해 설정.
+  - /etc/gitconfig 파일 : 모든 사용자와 저장소에 관한 설정 (git config --system)
+  - ~/.gitconfig 파일 : 특정 사용자에게 적용되는 설정 (git config --global)
+  - .git/config 파일 : 특정 저장소에만 적용되는 설정
+    * 설정값 적용은 역순으로 우선시 됨(특정저장소 - 특정사용자 - 모든사용자 설정 순)
+	
+  * 사용자 설정 (commit을 위한 사용자 정보)
+  $ git config --global user.name "JinHyeong Lee"
+  $ git config --global user.email ljh@example.com
+    * --global 옵션을 통해 홈디렉토리에 설정값을 저장했으나 프로젝트마다 다른 사용자 정보 사용하려면 --global 옵션 뺴고 사용
+
+  * 편집기 설정 (git 에서 기본적으로 사용할 text editor 설정가능. 기본적으로 vi나 vim)
+  $ git config --global core.editor 편집기
+  
+  * 설정 확인
+  $ git config --list
+ 
+4. git 기초 
+  git 저장소를 만드는법은 2가지.
+    A) 기존 프로젝트를 git 저장소로 만듦
+    $ git init
+	실행하면 .git이라는 directory가 만들어짐. 버전(파일)을 관리하게 하려면 저장소에 추가하고 commit해야함.
+	$ git add [파일이름1]
+	$ git add [파일이름2]
+    $ git commit -m "commit 메세지"
+	
+	B) 다른 서버에 있는 저장소를 clone(복제)
+	$ git clone [저장소 url]
+
+  파일 상태 확인하기
+  $ git status
+  * 파일 상태들
+    - Tracked / Untracked : tracked는 버전을 관리하고있는(스냅샷에 포함된) 파일, untracked는 반대
+	- Modified / Unmodified : tracked되는 기존 관리된 버전의 파일이 수정 됬는지 안됬는지
+
+  파일 새로 추적 / Modified 된 파일을 Stage 하기
+  $ git add [파일이름]
+  
+  파일 무시하기
+  - git이 tracked(추적)하지 않게 설정하기 -> .gitignore 파일을 만들고 파일에 규칙을 추가.
+  예시)
+  $ cat .gitignore
+  *.[oa]
+  *~
+  위 내용은 .o .a 확장자 파일, ~로 끝나는 파일은 무시해라는 내용.
+  (# : 주석, ! : 이 파일은 무시하지않는다. / : 디렉토리는 / 를 끝에 붙여서 표현
+  
+  수정된 파일 내용 보기 (stage 했다면 안보임)
+  $ git diff
+  
+  변경사항 커밋하기 (staging area에 올린 파일을 버전 관리를 위해 스냅샷을 남기겠다)
+  $ git commit
+    위를 실행하면 커밋 메세지를 입력할 수 있게 편집기가 뜸.
+    간단하게 커밋 메세지를 추가하려면 -m 옵션.
+  $ git commit -m "커밋메세지"
+    이미 추적되고있는(tracked) 파일은 staging atrea를 생략할 수있음. -a 옵션 사용.
+  $ git commit -a
+  
+  더이상 추적하지 않기
+  git rm --cached [파일이름]
+  (그냥 rm만 하면 파일 지워지므로 조심)
+  
+  commit 기록 보기
+  $ git log
+  
+  commit 수정하기
+  $ git commit --amend
+  
+  이전 파일로 되돌리기
+  $ git checkout -- [파일이름]
+    위 명령은 이전 파일로 덮어씌우는거기떄문에 그 후 내용은 사라짐.
+  
+5. git의 remote 저장소 (협업, 백업을 위한 시작)
+  - 네트워크에 있는 저장소. 다른사람과 같이 쓸 수도 있음.
+  
+  remote 저장소 확인
+  $ git remote
+    명령을 통해 자신의 프로젝트에 등록된 remote 저장소 확인할 수 있음. clone 해왔다면 origin이라고 자동 등록됨.
+  
+  $ git remote -v 
+    명령을 통해 url도 확인 가능.
+  
+  remote 저장소 추가하기 
+  $ git remote add [단축이름] [url]
+    단축이름이 origin과 같은 별칭이라고 보면됨 (일일이 url 안쳐도 되게)
+  
+  remote 저장소에서 데이터 가져오기
+  - 방법 2가지 있음
+  $ git fetch [remote-name]
+    데이터를 가져오긴 하지만 자동으로 병합해주진 않음
+  
+  $ git pull
+    데이터를 자동으로 가져오고 자동으로 local branch와 병합.
+	
+  remote 저장소에 데이터 저장
+  $ git push [remote-name] [branch-name]
+    branch 개념은 뒤에 나오지만 기본 branch는 master 라고 생각하면 됨.
+	
+  remote 저장소 자세히 살펴보기
+  $ git remote show [remote-name]
+  
+  remote 저장소 이름 바꾸기
+  $ git remote rename [old remote-name] [new remote-name]
+  
+  remote 저장소 삭제
+  $ git remote rm [remote-name]
+  
+  
+  * 간단하게 branch 설명
+  - 개발 시 코드를 여러 개로 복사하고 나서 원래 코드와 상관없이 독립적으로 개발 진행 -> branch 기능

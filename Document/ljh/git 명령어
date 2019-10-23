@@ -1,0 +1,46 @@
+** local 관련
+git config : git 설정값 관련
+ * --global : 현재 사용자 설정값(아무것도 안쓰면 현재 git repository)
+ * --list : 설정값 확인
+
+git init : 저장소 생성(.git 폴더)
+
+git status : working tree의 상태 보는 것
+ 
+git add	[파일명]: staging area에 파일을 올리는 것
+ * 파일명 말고 . 을 쓰면 현재 디렉토리 아래 있는 것 전부 add
+
+git commit : 버전 생성(스냅샷 기록)
+ * -m : commit 메시지 입력
+ * -a : 한번이라도 add 한 파일(tracked) stage안하고 바로 commit
+ * --amend : 이전 commit 수정
+
+git log	: 관리되고 있는 버전 보기(commit 기록)
+ * --stat : 버전 안에 관리되는 파일 변경사항 보기
+ * -p : 각 버전별 파일 변경 사항 보기
+ 
+git diff : working tree의 변경사항 보기
+
+git checkout [파일이름 또는 commit number]: 해당 commit 한 시점으로 돌아가기
+ * 파일의 경우 되돌리지 못함. 주의
+ 
+git rm [파일명] : 파일 지우고 tracking 도 지움
+ * --cached : 파일은 안지우고 traking 만 삭제
+ 
+** remote 관련
+git remote : 현재 git repository 에 등록된 remote 저장소 이름 확인
+ * -v : url 주소까지 보여줌
+
+git remote show [remote-name] : remote 저장소 상세정보
+
+git remote add [remote-name] [url] : remote 저장소 추가
+
+git fetch [remote-name] : remote 저장소에서 데이터 가져오기 (자동 병합 x)
+
+git pull [remote-name] : remote 저장소에서 데이터 가져오기 (자동 병합 o)
+
+git push [remote-name] [branch-name] : remote 저장소에 데이터 보내기
+
+git remote rename [old remote-name] [new remote-name] : remote 저장소 이름 변경
+
+git remote rm [remote-name] : remote 저장소 삭제
