@@ -1,0 +1,46 @@
+- 개요
+darknet은 yolo 알고리즘 연구자가 개발한 오픈소스로 다양한 객체인식 알고리즘들을
+사용할 수 있는 오픈소스.
+* 위는 linux 버전이며 window 버전은 alexeyAB 라는 사람이 기존 darknet을 fork하여 작성.
+  그래서 전체적인 흐름은 같지만 약간 다를 수 있음.
+
+그 중 우리는 yolov3 알고리즘을 사용할 것이며 위 알고리즘은 학습한 객체의 위치를
+나타내는 box의 중심점(x, y) 및 크기(w, h) 값과 확률(c) 값을 예측할 수 있다.
+
+우리는 웹캠을 통한 이미지를 실시간 예측할 것이며 그에따라 필요한 함수들만 볼 것이다.
+
+- darknet 웹캠 실행 명령어
+darknet detector demo cfg/coco.data cfg/yolov3.cfg yolov3.weights
+
+- windows버전 darknet 소스 분석.
+1. darknet.c
+main() 함수가 들어있고 argument 값에 따라 다양한 함수들을 호출하고 있다.
+웹캠의 경우 detector 옵션을 줘야하고 run_detector() 함수를 호출한다.
+
+2. detector.c
+run_detector() 함수가 들어있고 입력된 argument값을 저장한다. 그 중 객체 인식을 수행할
+알고리즘의 cfg파일(알고리즘 구조)과 weights파일(학습된 weight)을 읽어 값을 저장하고
+웹갬 실행을 위해 demo 옵션을 줬기 때문에 demo() 함수를 호출한다.
+
+3. demo.c
+demo() 함수가 들어있고 읽은 cfg 파일을 기반으로 network를 구성, fetch와 detect를
+수행하는 thread를 2개 생성한다. 
+
+while loop를 수행하며 아래와 같은 순서로 진행됨.
+thread 2개 생성 -> nms(non max sup) -> 예측된 값으로 box 그리기 ->trhead 종료 기다림 
+
+fetch thread에서 웹캠으로부터 이미지를 읽어오며
+detect thread에선 읽은 이미지를 기반으로 네트워크를 통해 예측하고 predictions 값을 저장.
+nms 는 예측된 box값 중 겹치는 것들 중 제일 확률 높은것만 남기고 삭제 (do_nms_sort() 함수).
+예측된 box값 정보로 이미지에 box 그리기 (draw_detections_cv_v3() 함수).
+
+nms 함수는 생략할 것이고 우리가 주목해야할 함수는 draw_detections_cv_v3() 함수.
+
+4. image_opencv.cpp
+draw_detections_cv_v3() 함수가 들어있음. 그외 opencv 관련 함수는 이 파일에서 다 구현됨.
+예측된 결과의 확률이 threshold값 이상인 것에 대해 확률 값 표시 및 box 그리기 수행.
+
+
+* 우리의 목표인 특정 클래스 감지 시 캡처기능 구현, 추적 기능 구현을 위해서는
+demo.c 파일과 image_opencv.cpp 파일, image_opencv.h 파일을 수정하여야 함. 
+이 뒤의 글들은 위 파일들의 내용을 수정 할 것임.

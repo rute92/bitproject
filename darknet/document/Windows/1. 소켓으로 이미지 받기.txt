@@ -1,0 +1,116 @@
+1. 소켓관련 헤더, 전역변수 선언
+
+#include <WinSock2.h>
+#define PORT_NUM    4000
+SOCKET server_socket, client_socket;
+static int total_size;
+unsigned char* recv_data;
+
+2. demo() 함수 내 소켓 선언 및 정의
+
+    // socket define
+    WSADATA wsa_data;
+    SOCKADDR_IN server_addr, client_addr;
+    int client_addr_size;
+
+    int ret;
+    char send_buff[3];
+    char to_buff[3];
+    
+    // winsock 초기화, 버전 2.2
+    if (0 < WSAStartup(MAKEWORD(2, 2), &wsa_data)) {
+        perror("WSAStartup() error\n");
+        return 0;
+    }
+
+    // server socket 생성
+    server_socket = socket(PF_INET, SOCK_STREAM, 0);
+    if (INVALID_SOCKET == server_socket) {
+        perror("socket() error\n");
+        return 0;
+    }
+
+    // server addr 초기화
+    memset(&server_addr, 0, sizeof(server_addr));
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_port = htons(PORT_NUM);
+    server_addr.sin_addr.s_addr = htonl(INADDR_ANY);
+
+    // server socket 및 addr 정보를 커널에 등록
+    if (SOCKET_ERROR == bind(server_socket, (SOCKADDR*)&server_addr, sizeof(server_addr))) {
+        perror("bind() error\n");
+        return 0;
+    }
+
+    // client 의 connect 대기
+    if (SOCKET_ERROR == listen(server_socket, 5)) {
+        perror("listen() error\n");
+        return 0;
+    }
+    printf("wait for client connection...\n");
+
+    // client connect 수락
+    client_addr_size = sizeof(client_addr);
+    client_socket = accept(server_socket, (SOCKADDR*)&client_addr, &client_addr_size);
+
+    if (INVALID_SOCKET == client_socket) {
+        perror("accept() error\n");
+        return 0;
+    }
+    printf("connected!\n\n");
+
+3. fetch_in_thread() 내 image 수신 부 구현
+
+    // image 정보 수신
+    ret = 0;
+    while (ret != sizeof(recv_info)) { // socket 에서 데이터 읽을 때 끊어서 읽을 수도 있으므로
+        ret += recv(client_socket, (char*)recv_info + ret, sizeof(recv_info) - ret, 0);
+            if (ret < 0) {
+                perror("[recv socket] image info receive fail\n");
+                return 0;
+            }
+        }
+    total_size = recv_info[0];
+    printf("[recv socket] image size : %d\n", total_size);
+
+    // image data 담을 buff 생성
+    recv_data = (unsigned char*)calloc(total_size, sizeof(unsigned char));
+    if (recv_data == NULL) {
+        perror("recv_data malloc() fail\n");
+        return 0;
+    }
+
+    // image 데이터 수신
+    ret = 0;
+    while (ret != total_size) {	// socket 에서 데이터 읽을 때 끊어서 읽을 수도 있으므로
+       ret += recv(client_socket, (char*)recv_data + ret, total_size - ret, 0);
+       if (ret < 0) {
+            perror("[recv socket] image data receive fail\n");
+            return 0;
+        }
+    }
+
+    // 내가 정의한 이미지 처리 함수로 넘기기
+    in_s = get_image_from_socket(recv_data, net.w, net.h, net.c, total_size, &in_img);
+
+4. image_opencv.cpp 에 get_image_from_socket() 함수 구현
+
+image get_image_from_socket(unsigned char* img_data, int w, int h, int c, int size, mat_cv** in_img)
+{
+    std::vector<uchar> decoding(img_data, img_data + size);
+    cv::Mat *src = new cv::Mat(608, 608, CV_8UC(3));
+    *src = cv::imdecode(decoding, cv::IMREAD_COLOR);
+    
+    *(cv::Mat**)in_img = src;
+
+    cv::Mat new_img = cv::Mat(w, h, CV_8UC(c));
+    cv::resize(*src, new_img, new_img.size(), 0, 0, cv::INTER_LINEAR);
+    cv::cvtColor(new_img, new_img, cv::COLOR_RGB2BGR);
+    image im = mat_to_image(new_img);
+
+    return im;
+}
+
+5. image_opencv.h 에 get_image_from_socket() 함수 선언 추가
+
+image get_image_from_socket(unsigned char* img_data, int w, int h, int c, int size, mat_cv** in_img);
