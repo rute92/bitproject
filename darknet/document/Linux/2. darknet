@@ -1,0 +1,7 @@
+기존에 pjreddie/darknet 을 참고하여 소스를 수정했었음.
+
+그 후 windows 버전 찾으면서 alexeyAB/darknet 코드를 찾았고 기능이 더 많고 코드가 간결하여
+linux 에서의 darknet도 이 코드로 수정함.
+
+상세 설명은 Windows 폴더 내의 설명을 참고하면 되고, 다른점은 socket 의 구현만 다름. 
+(Winsock <-> sys/socket 차이)

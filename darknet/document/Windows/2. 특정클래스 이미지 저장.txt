@@ -1,0 +1,98 @@
+현재는 사람 불 class 에 대해서 이미지 저장.
+
+1. image_opencv.cpp 에 draw_detection_cv_v3() 함수 내에 사람 class 감지
+
+image_opencv.cpp 전역변수 선언
+    int per_chk, fire_chk;
+    extern double per_chk_time, fire_chk_time;
+    extern double per_time, fire_time;
+
+draw_detection_cv_v3() 함수 내 변수 선언
+    int class_cnt = 0;
+    int* detected_class_arr = (int*)malloc(sizeof(int) * num);
+
+class 확률 thresh이상 판별하는 부분에 클래스 저장 추가
+    detected_class_arr[class_cnt++] = j;
+
+감지된 class 확인
+    if (class_cnt == 0) { per_chk = 0, fire_chk = 0; }
+    for (int a = 0; a < class_cnt; a++)
+    {
+        if (detected_class_arr[a] == 0)
+            per_chk = 1;
+				
+        if (detected_class_arr[a] == 2)
+            fire_chk = 1;
+
+        if (per_time > 5.)
+            per_chk = 0;
+
+        if (fire_time > 5.)
+            fire_chk = 0;
+
+        printf("%d -> index : %d \n", a, detected_class_arr[a]);
+    }
+
+    printf("per_chk_time : %f / per_chk : %d\n", per_time, per_chk);
+    printf("fire_chk_time : %f / fire_chk : %d\n", fire_time, fire_chk);
+    fflush(stdout);
+
+    free(detected_class_arr);
+
+
+2. demo.c 에 변수 선언 및 webcam_capture() 함수에서 시간 측정 및 사진 캡처
+
+demo.c 전역변수 선언
+    extern int per_chk, fire_chk;
+    double per_chk_time, fire_chk_time;
+    double per_time, fire_time;
+
+webcam_caputre() 함수 정의
+    void webcam_capture()
+    {
+        time_t t = time(NULL);
+        struct tm tm = *localtime(&t);
+        char from_buff = '0';
+
+        if (per_chk == 1)
+        {
+            per_time = get_wall_time() - per_chk_time;
+            if (per_time > 1.)
+            {
+                from_buff = '5';
+            }
+            if (per_time > 3.)
+            {
+                char filename[256];
+                sprintf(filename, "capture//person/%d%02d%02d_%02d%02d%02d.jpg", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
+                    tm.tm_hour, tm.tm_min, tm.tm_sec); //시간 동기화에 따라 tm.tm_hour 부분 수정해주기
+                save_cv_jpg(show_img, filename);
+                per_chk_time = get_wall_time();			
+            }
+        }
+        else { //per_chk==0
+            per_chk_time = get_wall_time();
+        }
+
+        if (fire_chk == 1)
+        {
+            fire_time = get_wall_time() - fire_chk_time;
+            if (fire_time > 1.)
+            {
+                from_buff = '5';
+            }
+            if (fire_time > 3.)
+            {
+                char filename[256];
+                sprintf(filename, "capture/fire/%d%02d%02d_%02d%02d%02d.jpg", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
+                    tm.tm_hour, tm.tm_min, tm.tm_sec);
+                save_cv_jpg(show_img, filename);
+                fire_chk_time = get_wall_time();
+            }
+        }
+        else {
+            fire_chk_time = get_wall_time();
+        }
+    }
+
+위 함수를 demo() 의 while loop 끝나기 전 수행.

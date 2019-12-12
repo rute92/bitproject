@@ -1,0 +1,30 @@
+github.com/AlexeyAB/darknet 참고.
+
+1. 학습 전
+- .cfg 파일 내 random 값을 1로 하기 (학습된 이미지와 다른 해상도의 물체에 대해 인식률 향상)
+
+- .cfg 파일 내 네트워크 해상도를 높이기 (기존 yolov3 경우 608, 32의 배수로 늘리기)
+
+- dataset에서 잘못 박스친 것이 없는지 확인하기
+
+- 학습 시킬 때 -show_imgs 옵션을 주면 경계박스 친게 보임(dataset 확인)
+
+- 학습시킬 물체에 대해 여러 각도, 기울기, 크기, 측면, 모양 등 의 다양한 dataset을 준비함.
+
+- 각 클래스에 대해 각기 다른 사진으로 2천장 정도 있어야하며 학습 반복횟수도 class 갯수 * 2000번 이상 학습
+
+- dataset에 목표하는 class가 없는 이미지도 포함하는 것이 좋음.(negative samples) 
+   -> 물체가 있는 데이터 셋 만큼 없는 사진도 사용!
+
+- 작은 물체들 훈련(416 x 416으로 resize된 이미지에서 16 x 16 크기 이하의 물체)에 대해선 717 줄 정도에
+  [upsample]의 stride값을 4로 바꾸고 그 아래 [route]의 layers 값을 -1, 11 로 바꾸기.
+
+- 큰 물체와 작은 물체 모두 인식하고싶을때 아래의 cfg 파일 수정해서 사용.
+  Full-model: 5 yolo layers: https://raw.githubusercontent.com/AlexeyAB/darknet/master/cfg/yolov3_5l.cfg
+
+- [yolo] 레이어에 ignore_thresh = .9 , iou_normalizer = 0.5, iou_loss = giou 로 하면 
+  0.9 확률의 물체감지는 증가하고 0.5 물체감지는 감소함.
+
+2. 학습 후
+- .cfg 에서 네트워크 해상도를 높이기 (608, 608 또는 832, 832 또는 32의 배수로)
+  (만약 해상도를 높여서 out of memory 가 난다면 subdivisions를 32 나 64로 높여서 돌리기)

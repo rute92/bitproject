@@ -1,0 +1,28 @@
+Linux 환경과 크게 다를건 없으나 헤더파일이 다르고 lib 파일 링킹 시켜줘야함.
+
+함수 관련해선 최초 소켓 생성 및 소멸 때에 조금 다르고 그 외는 linux 코드와 호환되게 구성.
+
+1. lib 파일 링킹
+visual studio에선 프로젝트-속성-링커-입력-추가종속성 항목의 편집을 눌러 ws2_32.lib 를 추가.
+
+2. 코드 내 사용.
+ 2-1. 헤더파일 
+  #include <WinSock2.h>
+
+ 2-2. 선언 및 자료형
+  SOCKET 자료형, WDADATA 자료형, SOCKADDR_IN 자료형 사용.
+  그외 사용법 동일. (단, recv / send 함수에서 버퍼 자료형이 linux에선 void*였으나 windows에선 char*)
+
+ 2-3 사용 함수
+  WSAStartup() - winsock 초기화 함수
+  socket() - 소켓 생성 함수
+  bind() - 커널에 소켓 및 addr 정보 등록
+  listen() - client 접속 대기
+  accept() - client 접속 수락
+  recv() - 데이터 수신
+  send() - 데이터 송신
+  closesocket() - 소켓 닫음
+  WSACleanup() - winsock 닫음
+
+ 2-4 사용 예시 코드
+  winSock_test.cpp (서버) 참고. 클라이언트 프로그램은 linux 프로그램 참고.

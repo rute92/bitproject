@@ -1,0 +1,153 @@
+img_recv.cpp 는 이미지를 수신 받는 쪽이고 '서버'에 해당한다.
+img_send.cpp 는 이미지를 송신 하는 쪽이고 '클라이언트'에 해당한다.
+jpg_test.cpp 는 이미지 압축 및 버퍼 변환 연습한 코드이다.
+
+linux에서 소켓 관련 헤더로
+#include <arpa/inet.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+에 주로 정의되어 있음.
+
+[서버 프로그램 (TCP)]
+초기화를 위한 변수 정의
+	int server_socket, client_socket;
+	unsigned int client_addr_size;
+	struct sockaddr_in server_addr, client_addr;
+
+소켓 생성 및 주소 정의
+	// 소켓 생성
+	server_socket  = socket( PF_INET, SOCK_STREAM, 0);
+	if( -1 == server_socket)
+	{
+		printf( "socket 생성 실패n");
+    	exit( 1);
+	}
+
+	// 주소 등록
+	memset( &server_addr, 0, sizeof( server_addr));
+	server_addr.sin_family     = AF_INET;
+	server_addr.sin_port       = htons( 4000);
+	server_addr.sin_addr.s_addr= htonl(INADDR_ANY);
+
+	// 커널에 소켓 및 주소 등
+	if(-1 == bind(server_socket, (struct sockaddr*)&server_addr, sizeof(server_addr))) {
+		cerr << "bind() error\n";
+		return -1;
+	}
+
+클라이언트 접속 및 대기
+	// 클라이언트 접속 대기
+	if( -1 == listen(server_socket, 5))
+	{
+		printf("listen fail\n");
+		return -1;
+	}
+	cerr << "wait for client connection...\n";
+
+	client_addr_size  = sizeof(client_addr);
+	
+	// 클라이언트 접속 수락
+	client_socket = accept(server_socket, (struct sockaddr*)&client_addr, &client_addr_size);
+
+	if( -1 == client_socket) {
+		printf("client accept fail\n");
+		return -1;
+	}
+	cerr << "connected!\n\n";
+
+소켓으로 부터 메세지 주고 받기
+	// 수신
+	ret = 0;
+	for(i = 0; data_loc < total_size; i++) { // 데이터 커서 SEND_SIZE만큼 나눠서 받음
+		while(ret != SEND_SIZE){ // 실제 SEND_SIZE만큼 받을때까지 반복
+			ret += recv(client_socket, recv_data + data_loc + ret, SEND_SIZE - ret, 0);
+			if(ret < 0) {
+				cerr << "image data receive fail\n ";
+				return -1;
+			}
+		}
+		data_loc += SEND_SIZE;
+	}
+	data_loc = 0;
+
+
+[클라이언트 프로그램 (TCP)]
+초기화를 위한 변수 정의
+	int client_socket;
+	struct sockaddr_in server_addr;
+
+소켓 생성 및 주소 정의
+	// 소켓 생성
+	client_socket = socket(PF_INET, SOCK_STREAM, 0);
+	if(-1 == client_socket) {
+		cerr << "server client_socket error\n";
+		return -1;
+	}
+	
+	// socketaddr_in 구조체 초기화 및 정의(서버 addr 정의)
+	memset(&server_addr, 0, sizeof(server_addr));
+	server_addr.sin_family = AF_INET;
+	server_addr.sin_port = htons(PORT_NUM);
+	server_addr.sin_addr.s_addr = inet_addr(SERVER_IP);
+
+서버에 접속 요청
+	// 서버에 connect 요청
+	if( -1 == connect(client_socket, (struct sockaddr*)&server_addr, sizeof(server_addr))) {
+		cerr << "connect fail\n";
+		return -1;
+	}
+
+소켓으로 부터 메세지 주고 받기
+	// 전송
+	for(i = 0; data_loc < total_size; i++) { // 데이터 너무커서 나눠서 전
+		ret = send(client_socket, send_data + data_loc, SEND_SIZE, 0);
+		if(ret < 0) {
+			cerr << "image data send fail\n";
+			return -1;
+		}
+		data_loc += SEND_SIZE;
+	}
+	data_loc = 0;
+
+
+
+	위와같이 했을 때 초당 5장 밖에 처리하지 못하고 소켓을 통해 데이터를 보내는 시간이 오래걸리다보니 실제 이미지와 소켓을 통해 받은 이미지 간 delay가 심했음.
+
+위 사항을 해결하기 위해 
+a. UDP 통신 시도 -> 똑같이 느리고 이미지 받을때 깨져서 받아짐(UDP는 data loss 생겨도 책임x)
+b. 압축을 통해 크기를 줄여 보냄. (원래 데이터 608 * 608 * 3 으로 약 1Mbyte)
+	-> 속도 개선에 큰 영향이 있음. 클라이언트에서 이미지를 압축해서 송신하고 서버에서 수신 후 압축해제하여 사용.
+
+
+
+[jpeg 압축 테스트]
+파라메터 정의
+	vector<uchar> buff; // 압축된 데이터 담을 벡터
+	vector<int> param_jpeg = vector<int>(2); // 압축 설정 담을 벡터
+	param_jpeg[0] = IMWRITE_JPEG_QUALITY; // 압축형태
+	param_jpeg[1] = 50; // 압축률 (Quality, 낮을수록 많이 압축)
+
+사용
+	// 압축
+	imencode(".jpg", img, buff, param_jpeg);
+	cout << "buff size: " << buff.size() << endl;
+	unsigned char* send_data;
+
+	// 압축된 size만큼 버퍼 생성
+	send_data = (unsigned char*)calloc(buff.size(), sizeof(unsigned char));
+        
+ 	// 버퍼로 압축된 데이터 복사 또는 참조
+	//copy(buff.begin(), buff.end(), send_data); // 복사
+	send_data = &buff[0]; // 참조
+
+	// vector 버퍼 참조하여 생성
+	vector<uchar> dst_buff(send_data, send_data + buff.size());
+        
+	// 압축 해제
+	Mat dst=imdecode(dst_buff, 1);
+
+quality 50으로 1M 압축하면 한번에 send 할 수 있을 만큼의 크기가 됨.
+속도도 2배 개선되었음.
+
+
+
