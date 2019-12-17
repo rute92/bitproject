@@ -22,6 +22,7 @@ int main( int argc, char **argv)
 	struct sockaddr_in server_addr, client_addr;
 
 	int recv_info[3];
+	char mode_info[3];
 	char send_buff[3];
 	unsigned char *recv_data;
 	int h, w, c;
@@ -106,13 +107,23 @@ int main( int argc, char **argv)
 			}
 		}
 
+		//mode 정보 수신
+		ret = 0;
+		while(ret != sizeof(mode_info)){ // 받아야하는 값 만큼 실제 받을때까지,
+			ret += recv(client_socket, mode_info + ret, sizeof(mode_info) - ret, 0);
+			if(ret < 0) {
+				cerr << "mode info receive fail\n";
+				return -1;
+			}
+		}
+		cout << "mode info: " << mode_info << endl;
 		// jpeg 압축포맷 해제
 		vector<uchar> decoding(recv_data, recv_data + total_size);
         Mat img = imdecode(decoding, IMREAD_COLOR);
 
 		namedWindow("recv", WINDOW_AUTOSIZE);
 		imshow("recv", img);
-		int c = waitKey(1);
+		int c = waitKey(10);
 		if(c == 27) {
 			//ESC 입력 시 종료
 			send_buff[0] = 'c';
@@ -123,7 +134,10 @@ int main( int argc, char **argv)
 			}
 			break;
 		}
-		send_buff[0] = 'o';
+		send_buff[0] = mode_info[0];
+		send_buff[1] = mode_info[1];
+		send_buff[2] = mode_info[2];
+		
 		ret = send(client_socket, send_buff, sizeof(send_buff), 0);
 		if(ret < 0) {
 			cerr << "[img_recv.cpp] message write fail\n";

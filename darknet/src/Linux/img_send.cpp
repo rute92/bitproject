@@ -17,7 +17,6 @@
 //#define SERVER_IP	"192.168.0.38" // my pc
 //#define SERVER_IP	"127.0.0.1"
 #define SEND_SIZE	1024 //58368
-#define WRITE_PATH	"./from_yolo"
 #define DEBUG
 
 using namespace cv;
@@ -25,24 +24,17 @@ using namespace std;
 
 int main(int argc, char** argv)
 {
-	FILE* fp;
 	int client_socket;
 	struct sockaddr_in server_addr;
 
 	int h, w, c, step;
 	int send_info[3];	// row, col, channel 정보
+	char mode_info[3];
 	unsigned char *send_data;	// mat data 정보
 	char recv_buff[3];
 	int ret, total_size, data_loc = 0;
 	int i, k, j;
 	int count = 0;
-
-	// 파일 생성
-	fp = fopen(WRITE_PATH, "w+");
-	if (nullptr == fp) {
-		cerr << "open error\n";
-		return -1;
-	}
 	
 	// TCP로 client_socket 생성
 	client_socket = socket(PF_INET, SOCK_STREAM, 0);
@@ -122,6 +114,16 @@ int main(int argc, char** argv)
 			return -1;
 		}
 
+		// subscribe contents
+		mode_info[0] = '2';
+		mode_info[1] = '0';
+		mode_info[2] = '0';
+		ret = send(client_socket, mode_info, sizeof(mode_info), 0);
+		if(ret < 0) {
+			cerr << "mode info send fail\n";
+			return -1;
+		}
+
 		// server 작업 끝날때까지 대기
 		ret = recv(client_socket, recv_buff, sizeof(recv_buff), 0);
 
@@ -132,12 +134,7 @@ int main(int argc, char** argv)
   		cout << "time: " << recv_time << endl;
 #endif
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          
-		ret = fwrite(recv_buff, 1, 2, fp);
-		if(ret < 0) {
-			cerr << "write error\n";
-			return -1;
-		}
-		fseek(fp, 0, SEEK_SET);
+
 #ifdef DEBUG
 		cout << "recv: " << recv_buff[0] << recv_buff[1] << recv_buff[2] << endl;
 #endif
@@ -148,7 +145,6 @@ int main(int argc, char** argv)
 	destroyWindow("img");
 #endif
 	free(send_data);
-	fclose(fp);
 	close(client_socket);
 
 	return 0;
