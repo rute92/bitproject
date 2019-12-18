@@ -111,6 +111,7 @@ void show_acnhors(int number_of_boxes, int num_of_clusters, float *rel_width_hei
 // add code -->
 // My func
 image get_image_from_socket(unsigned char* img_data, int w, int h, int c, int size, mat_cv** in_img);
+unsigned char* mat_to_jpg_cv(mat_cv** src, unsigned char* dest, int quality, int* size);
 // end code <--
 
 #else   // OPENCV

@@ -468,6 +468,7 @@ void show_image_mat(mat_cv *mat_ptr, const char *name)
         if (mat_ptr == NULL) return;
         cv::Mat &mat = *(cv::Mat *)mat_ptr;
         cv::namedWindow(name, cv::WINDOW_NORMAL);
+		cv::resizeWindow(name, cv::Size(608, 608));
         cv::imshow(name, mat);
     }
     catch (...) {
@@ -878,7 +879,8 @@ int draw_detections_cv_v3(mat_cv* mat, detection* dets, int num, float thresh, c
         // code add -->
         int ret = 0;
         int class_cnt = 0;
-        int* detected_class_arr = (int*)malloc(sizeof(int) * num);
+        //int* detected_class_arr = (int*)malloc(sizeof(int) * num);
+		int detected_class_arr[100];
         // code end <--
 
         for (i = 0; i < num; ++i) {
@@ -1016,8 +1018,11 @@ int draw_detections_cv_v3(mat_cv* mat, detection* dets, int num, float thresh, c
         }
 
         // code add -->
-        if (mode == 2) {
-			if (class_cnt == 0) { per_chk = 0, fire_chk = 0; }
+        if (mode == 110) {
+			if (class_cnt == 0) { 
+				per_chk = 0;
+				fire_chk = 0; 
+			}
             for (int a = 0; a < class_cnt; a++)
             {
                 if (detected_class_arr[a] == 0)
@@ -1039,8 +1044,12 @@ int draw_detections_cv_v3(mat_cv* mat, detection* dets, int num, float thresh, c
 			printf("fire_chk_time : %f / fire_chk : %d\n", fire_time, fire_chk);
             fflush(stdout);
         }
+		else {
+			per_chk = 0;
+			fire_chk = 0;
+		}
 
-        free(detected_class_arr);
+        //free(detected_class_arr);
 
         return ret;
         // code end <--
@@ -1389,6 +1398,22 @@ image get_image_from_socket(unsigned char* img_data, int w, int h, int c, int si
     //cv::waitKey(1);
 
     return im;
+}
+
+// img 를 jpg로 변환.
+unsigned char* mat_to_jpg_cv(mat_cv** src, unsigned char* dest, int quality, int* size)
+{
+	std::vector<uchar> buff;
+	std::vector<int> param_jpeg = std::vector<int>(2);
+	param_jpeg[0] = cv::IMWRITE_JPEG_QUALITY;
+	param_jpeg[1] = quality;
+
+	if (!cv::imencode(".jpg", **(cv::Mat**)src, buff, param_jpeg))
+		return 0;
+	*size = buff.size();
+	dest = new unsigned char[*size];
+	memcpy(dest, &buff[0], buff.size());
+	return dest;
 }
 // ----------------------------------------
 // end code <--
