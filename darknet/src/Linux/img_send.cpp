@@ -78,8 +78,8 @@ int main(int argc, char** argv)
 
 	while(1)
 	{
+		struct timeval time;
 #ifdef DEBUG
- 		struct timeval time;
  		gettimeofday(&time, NULL);
  		double current_time = (double)time.tv_sec + (double)time.tv_usec * .000001;
 #endif
@@ -114,10 +114,12 @@ int main(int argc, char** argv)
 			return -1;
 		}
 
-		// subscribe contents
-		mode_info[0] = '2';
-		mode_info[1] = '0';
+		
+		mode_info[0] = '1';
+		mode_info[1] = '1';
 		mode_info[2] = '0';
+		
+		////////////subscribe contents and save to mode_info///////////////
 		ret = send(client_socket, mode_info, sizeof(mode_info), 0);
 		if(ret < 0) {
 			cerr << "mode info send fail\n";
@@ -127,8 +129,9 @@ int main(int argc, char** argv)
 		// server 작업 끝날때까지 대기
 		ret = recv(client_socket, recv_buff, sizeof(recv_buff), 0);
 
-#ifdef DEBUG
   		gettimeofday(&time, NULL);
+
+#ifdef DEBUG
   		double recv_time = (double)time.tv_sec + (double)time.tv_usec * .000001;
   		recv_time -= current_time;
   		cout << "time: " << recv_time << endl;
@@ -138,13 +141,67 @@ int main(int argc, char** argv)
 #ifdef DEBUG
 		cout << "recv: " << recv_buff[0] << recv_buff[1] << recv_buff[2] << endl;
 #endif
+		struct tm tm = *localtime(&time.tv_sec);
+		char filename[256];
+
+		////////// not cordinated image ////////////////
+		// if (recv_buff[2] == '1') { // person img save
+		// 	sprintf(filename, "capture/person/%d%02d%02d_%02d%02d%02d.jpg", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+		// 	imwrite(filename, img, param_jpeg);
+		// }
+		// else if (recv_buff[2] == '2') { // fire img save
+		// 	sprintf(filename, "capture/fire/%d%02d%02d_%02d%02d%02d.jpg", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+		// 	imwrite(filename, img, param_jpeg);
+		// }
+		
+		////////// cordinated image ////////////////
+		if (recv_buff[2] == '1' || recv_buff[2] == '2') {
+			int jpg_size = 0;
+			unsigned char* jpg_data = nullptr;
+
+			if (recv_buff[2] == '1') { // person img save
+				sprintf(filename, "capture/person/%d%02d%02d_%02d%02d%02d.jpg", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+			}
+			else if (recv_buff[2] == '2') { // fire img save
+				sprintf(filename, "capture/fire/%d%02d%02d_%02d%02d%02d.jpg", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+			}
+
+			// jpg size recv
+			ret = 0;
+			while (ret != sizeof(int)) {
+				ret += recv(client_socket, &jpg_size + ret, sizeof(int) - ret, 0);
+				if(ret < 0) {
+					cerr << "jpg info receive fail\n";
+					return -1;
+				}
+			}
+			jpg_data = (unsigned char*)calloc(jpg_size, sizeof(unsigned char));
+
+			// jpg data recv
+			ret = 0;
+			while(ret != jpg_size){ // 받아야하는 값 만큼 실제 받을때까지,
+				ret += recv(client_socket, jpg_data + ret, jpg_size - ret, 0);
+				if(ret < 0) {
+					cerr << "jpg data receive fail\n";
+					return -1;
+				}
+			}
+
+			// jpg decode & jpg save
+			vector<uchar> decoding(jpg_data, jpg_data + jpg_size);
+        	Mat jpg_img = imdecode(decoding, IMREAD_COLOR);
+			imwrite(filename, jpg_img, param_jpeg);
+		}
+
+		////////////if(recv_buff[1] == 5) write the stop at mode.txt///////////
+		
 	}
 	
 	cerr << "Quit the program!\n";
 #ifdef DEBUG
 	destroyWindow("img");
 #endif
-	free(send_data);
+	//free(send_data);
 	close(client_socket);
 
 	return 0;
