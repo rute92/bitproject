@@ -17,18 +17,17 @@
 //#define SERVER_IP	"192.168.0.38" // my pc
 //#define SERVER_IP	"127.0.0.1"
 #define SEND_SIZE	1024 //58368
-#define MODE_FILE_NAME    "~/web/mode.txt"
-#define MODE110_FILE_NAME    "~/mode110.txt"
-#define MODE310_FILE_NAME    "~/mode310.txt"
-#define DEBUG
+#define MODE_FILE_NAME    "/home/nvidia/web/mode.txt"
+#define MODE110_FILE_NAME    "/home/nvidia/mode110.txt"
+#define MODE310_FILE_NAME    "/home/nvidia/mode310.txt"
+//#define DEBUG
 
 using namespace cv;
 using namespace std;
 
 int main(int argc, char** argv)
 {
-
-    FILE* mode_fp, mode110_fp, mode310_fp;
+    FILE* mode_fp, * mode110_fp, * mode310_fp;
 	int client_socket;
 	struct sockaddr_in server_addr;
 
@@ -47,7 +46,6 @@ int main(int argc, char** argv)
 		cerr << "server client_socket error\n";
 		return -1;
 	}
-	
 	// socketaddr_in 구조체 초기화 및 정의(서버 addr 정의)
 	memset(&server_addr, 0, sizeof(server_addr));
 	server_addr.sin_family = AF_INET;
@@ -55,16 +53,16 @@ int main(int argc, char** argv)
 	//server_addr.sin_addr.s_addr = inet_addr(SERVER_IP);
 	server_addr.sin_addr.s_addr = inet_addr(argv[1]);
 
+#ifdef DEBUG
 	cout << "client_socketaddr ok" << endl;
+#endif
 
 	// 서버에 connect 요청
 	if( -1 == connect(client_socket, (struct sockaddr*)&server_addr, sizeof(server_addr))) {
 		cerr << "connect fail\n";
 		return -1;
 	}
-#ifdef DEBUG
-	printf("connect ok\n");
-#endif
+	cout << "connect ok\n";
 
 	// image 읽기위한 정의
 	Mat img;
@@ -81,13 +79,17 @@ int main(int argc, char** argv)
 		cerr << "VideoCapture error\n";
 	}
 
-    // 파일 열기
-    mode_fp = fopen(MODE_FILE_NAME, "r");
     
 	while(1)
 	{
         int mode;
 		struct timeval time;
+
+		// 파일 열기
+		mode_fp = fopen(MODE_FILE_NAME, "r+");
+		if (mode_fp == nullptr) {
+			cerr << "mode.txt open fail!\n";
+		}
 #ifdef DEBUG
  		gettimeofday(&time, NULL);
  		double current_time = (double)time.tv_sec + (double)time.tv_usec * .000001;
@@ -127,6 +129,10 @@ int main(int argc, char** argv)
         fread(mode_info, 1, sizeof(mode_info), mode_fp);
         fseek(mode_fp, 0, SEEK_SET);
         mode = atoi(mode_info);
+
+#ifdef DEBUG
+		cout << "mode: " << mode << endl;
+#endif
         
         // mode 정보 전송
 		ret = send(client_socket, mode_info, sizeof(mode_info), 0);
@@ -155,11 +161,11 @@ int main(int argc, char** argv)
         if (mode == 110) { // 감지모드 110
             ////////// 박스 안친 이미지 저장 ////////////////
             // if (recv_buff[2] == '1') { // person img save
-            // 	sprintf(filename, "~/capture/person/%d%02d%02d_%02d%02d%02d.jpg", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+            // 	sprintf(filename, "/home/nvidia/capture/person/%d%02d%02d_%02d%02d%02d.jpg", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
             // 	imwrite(filename, img, param_jpeg);
             // }
             // else if (recv_buff[2] == '2') { // fire img save
-            // 	sprintf(filename, "~/capture/fire/%d%02d%02d_%02d%02d%02d.jpg", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+            // 	sprintf(filename, "/home/nvidia/capture/fire/%d%02d%02d_%02d%02d%02d.jpg", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
             // 	imwrite(filename, img, param_jpeg);
             // }
 		
@@ -169,10 +175,10 @@ int main(int argc, char** argv)
                 unsigned char* jpg_data = nullptr;
 
                 if (recv_buff[2] == '1') { // person img save name
-                    sprintf(filename, "~/capture/person/%d%02d%02d_%02d%02d%02d.jpg", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+                    sprintf(filename, "/home/nvidia/capture/person/%d%02d%02d_%02d%02d%02d.jpg", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
                 }
                 else if (recv_buff[2] == '2') { // fire img save name
-                    sprintf(filename, "~/capture/fire/%d%02d%02d_%02d%02d%02d.jpg", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+                    sprintf(filename, "/home/nvidia/capture/fire/%d%02d%02d_%02d%02d%02d.jpg", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
                 }
 
                 // jpg size recv
@@ -206,7 +212,12 @@ int main(int argc, char** argv)
             if (recv_buff[1] == '5') { // 정지
                 // 파일에 쓰기 또는 publish
                 mode110_fp = fopen(MODE110_FILE_NAME, "w");
-                // cerr << "mode310 write: " << recv_buff[1] << endl;
+				if (mode110_fp == nullptr) {
+					cerr << "mode110.txt open fail!\n";
+				}
+#ifdef DEBUG
+				cout << "mode110 write: " << recv_buff[1] << endl;
+#endif
                 fwrite(recv_buff + 1, 1, 1, mode110_fp);
                 fseek(mode110_fp, 0, SEEK_SET);
                 fclose(mode110_fp);
@@ -214,17 +225,27 @@ int main(int argc, char** argv)
             else {// 정지아님
                 // 파일에 쓰기 또는 publish
                 mode110_fp = fopen(MODE110_FILE_NAME, "w");
-                // cerr << "mode310 write: " << recv_buff[1] << endl;
+				if (mode110_fp == nullptr) {
+					cerr << "mode110.txt open fail!\n";
+				}
+#ifdef DEBUG
+				cout << "mode110 write: " << recv_buff[1] << endl;
+#endif
                 fwrite(recv_buff + 1, 1, 1, mode110_fp);
                 fseek(mode110_fp, 0, SEEK_SET);
                 fclose(mode110_fp);
             }
         } // 감지모드 110 끝
-        
+
         if(mode == 310) { // 추적모드 310
             // 파일에 recv_buff[1] 쓰기
             mode310_fp = fopen(MODE310_FILE_NAME, "w");
-            // cerr << "mode310 write: " << recv_buff[1] << endl;
+			if (mode310_fp == nullptr) {
+				cerr << "mode310.txt open fail!\n";
+			}
+#ifdef DEBUG
+			cout << "mode310 write: " << recv_buff[1] << endl;
+#endif
             fwrite(recv_buff + 1, 1, 1, mode310_fp);
             fseek(mode310_fp, 0, SEEK_SET);
             fclose(mode310_fp);
@@ -232,20 +253,25 @@ int main(int argc, char** argv)
         else { // 추적모드 310 이 아닌 경우
             // 파일에 다른 값 쓰기
             mode310_fp = fopen(MODE310_FILE_NAME, "w");
+			if (mode310_fp == nullptr) {
+				cerr << "mode310.txt open fail!\n";
+			}
             recv_buff[1] = '0';
-            // cerr << "mode310 write: " << recv_buff[1] << endl;
+#ifdef DEBUG
+			cout << "mode310 write: " << recv_buff[1] << endl;
+#endif
             fwrite(recv_buff + 1, 1, 1, mode310_fp);
             fseek(mode310_fp, 0, SEEK_SET);
             fclose(mode310_fp);
         }
+		fclose(mode_fp);
 	}
 	
-	cerr << "Quit the program!\n";
+	cerr << "Quit img_send program!\n";
 #ifdef DEBUG
 	destroyWindow("img");
 #endif
 	//free(send_data);
 	close(client_socket);
-    fclose(mode_fp)
 	return 0;
 }
