@@ -27,6 +27,17 @@ myNode::myNode(unsigned _x, unsigned _y, myNode* _parent)
 
 }
 
+bool myNode::operator<(const myNode& node) const {
+	if (fScore == node.fScore) {
+		if (xPos == node.xPos)
+			return yPos < node.yPos;
+		else
+			return xPos < node.xPos;
+	}
+	else
+		return fScore > node.fScore;
+}
+
 // Node 좌표값 비교, 같으면 1 아니면 0
 bool myNode::compNode(myNode* node) {
 	return (this->xPos == node->xPos && this->yPos == node->yPos);
@@ -41,6 +52,7 @@ void myNode::initNode() {
 	hScore = 0;
 	parent = nullptr;
 }
+
 
 /*
    ###################################################################################
@@ -71,7 +83,7 @@ myMap::myMap(const myMap& map)
 }
 
 myMap::myMap(int _width, int _height, unsigned char* _mapData)
-	: width(_width), height(_height)//, data(_mapData)
+	: width(_width), height(_height)
 {
 	int size = width * height;
 	data = new unsigned char[size];
@@ -120,19 +132,27 @@ unsigned char* myMap::getMapAddr() {
 
 // 맵에 해당하는 좌표 값 반환
 int myMap::getMapData(int _x, int _y) {
+	if (_x < 0 || _y < 0 || _x >= width || _y >= height)
+		return -1;
 	return data[_y * width + _x];
 }
 
 // 맵에 해당하는 좌표 값에 val 값 설정
 void myMap::setMapData(int _x, int _y, unsigned char val) {
-	data[_y * width + _x] = val;
+	if (_x < 0 || _y < 0 || _x >= width || _y >= height)
+		std::cerr << "setMapData fail!\n";
+	else
+		data[_y * width + _x] = val;
 }
 
 
 
 // 맵에 장애물 설치
 void myMap::setObject(int _x, int _y) {
-	data[_y * width + _x] = OBJECT;
+	if (_x < 0 || _y < 0 || _x >= width || _y >= height)
+		std::cerr << "setObject fail!\n";
+	else
+		data[_y * width + _x] = OBJECT;
 }
 
 
@@ -149,7 +169,7 @@ void myMap::printMap() {
 
 // 갈 수 있는 좌표인지 아닌지. 갈 수 있으면 1, 아니면 0
 bool myMap::isWalkable(int _x, int _y) {
-	if (_x >= width || _y >= height)
+	if (_x < 0 || _y < 0 || _x >= width || _y >= height)
 		return false;
 
 	return (data[_y * width + _x] != OBJECT) ? true : false;
@@ -266,7 +286,7 @@ Astar::~Astar() {
 // 맴버변수들 초기화
 void Astar::init() {
 	while (!openList.empty()) {
-		openList.pop();
+		openList.erase(openList.begin(), openList.end());
 	}
 	closeList.clear();
 	start.initNode();
@@ -302,6 +322,10 @@ void Astar::setMap(int _x, int _y, unsigned char* _map_data) {
 }
 void Astar::setMap(const myMap& _map) {
 	map = _map;
+}
+
+bool Astar::hasFindRoute() {
+	return hasRoute;
 }
 
 // H 값 계산
@@ -345,13 +369,17 @@ void Astar::setPathToMap(myNode* fin) {
 
 
 // 닫힌 목록에 노드가 있는지? 있으면 1, 없으면 0
+//bool Astar::isInCloseList(myNode* node) {
+//	for (auto riter = closeList.rbegin(); riter != closeList.rend(); ++riter) {
+//		if ((*riter)->compNode(node))
+//			return true;
+//	}
+//	return false;
+//}
 bool Astar::isInCloseList(myNode* node) {
-	for (auto riter = closeList.rbegin(); riter != closeList.rend(); ++riter) {
-		if ((*riter)->compNode(node))
-			return true;
-	}
-	return false;
+	return closeList.find(node) != closeList.end();
 }
+
 
 // 현재 노드에 인접한 노드를 검사해 열린 목록에 넣음
 bool Astar::checkAround(myNode* now, bool allowDiagonal, bool crossCorner) {
@@ -363,7 +391,7 @@ bool Astar::checkAround(myNode* now, bool allowDiagonal, bool crossCorner) {
 		myNode* tmp = new myNode(now->xPos, now->yPos - 1, now); // 북쪽 노드 생성
 		if (!isInCloseList(tmp)) {
 			calcF(tmp, 0);
-			openList.pushNode(tmp);
+			openList.insert(tmp);
 			s0 = true;
 			isThere = true;
 		}
@@ -375,7 +403,7 @@ bool Astar::checkAround(myNode* now, bool allowDiagonal, bool crossCorner) {
 		myNode* tmp = new myNode(now->xPos + 1, now->yPos, now);
 		if (!isInCloseList(tmp)) {
 			calcF(tmp, 0);
-			openList.pushNode(tmp);
+			openList.insert(tmp);
 			s1 = true;
 			isThere = true;
 		}
@@ -387,7 +415,7 @@ bool Astar::checkAround(myNode* now, bool allowDiagonal, bool crossCorner) {
 		myNode* tmp = new myNode(now->xPos, now->yPos + 1, now);
 		if (!isInCloseList(tmp)) {
 			calcF(tmp, 0);
-			openList.pushNode(tmp);
+			openList.insert(tmp);
 			s2 = true;
 			isThere = true;
 		}
@@ -399,7 +427,7 @@ bool Astar::checkAround(myNode* now, bool allowDiagonal, bool crossCorner) {
 		myNode* tmp = new myNode(now->xPos - 1, now->yPos, now);
 		if (!isInCloseList(tmp)) {
 			calcF(tmp, 0);
-			openList.pushNode(tmp);
+			openList.insert(tmp);
 			s3 = true;
 			isThere = true;
 		}
@@ -426,7 +454,7 @@ bool Astar::checkAround(myNode* now, bool allowDiagonal, bool crossCorner) {
 		myNode* tmp = new myNode(now->xPos - 1, now->yPos - 1, now);
 		if (!isInCloseList(tmp)) {
 			calcF(tmp, 1);
-			openList.pushNode(tmp);
+			openList.insert(tmp);
 			isThere = true;
 		}
 		else
@@ -437,7 +465,7 @@ bool Astar::checkAround(myNode* now, bool allowDiagonal, bool crossCorner) {
 		myNode* tmp = new myNode(now->xPos + 1, now->yPos - 1, now);
 		if (!isInCloseList(tmp)) {
 			calcF(tmp, 1);
-			openList.pushNode(tmp);
+			openList.insert(tmp);
 			isThere = true;
 		}
 		else
@@ -448,7 +476,7 @@ bool Astar::checkAround(myNode* now, bool allowDiagonal, bool crossCorner) {
 		myNode* tmp = new myNode(now->xPos + 1, now->yPos + 1, now);
 		if (!isInCloseList(tmp)) {
 			calcF(tmp, 1);
-			openList.pushNode(tmp);
+			openList.insert(tmp);
 			isThere = true;
 		}
 		else
@@ -459,7 +487,7 @@ bool Astar::checkAround(myNode* now, bool allowDiagonal, bool crossCorner) {
 		myNode* tmp = new myNode(now->xPos - 1, now->yPos + 1, now);
 		if (!isInCloseList(tmp)) {
 			calcF(tmp, 1);
-			openList.pushNode(tmp);
+			openList.insert(tmp);
 			isThere = true;
 		}
 		else
@@ -476,22 +504,29 @@ myNode* Astar::findRoute(unsigned int fromX, unsigned int fromY, unsigned int to
 	setStart(fromX, fromY);
 	setFinish(toX, toY);
 
+	std::set<myNode*, compareOpenList>::iterator openListIter;
 	// 1. 시작노드에서 인접한 & 갈수있는 노드들 열린목록에 넣기
-	closeList.push_back(&start);
+	closeList.insert(&start);
 	checkAround(&start, DIAGONAL, CROSSCORNER);
-
-	myNode* now;
+	if (start.xPos == finish.xPos && start.yPos == finish.yPos) { // 닫힌목록에 목표 노드가 있다면
+		hasRoute = true; // 길찾기 성공
+		return &finish;
+	}
+	myNode* now = nullptr;
 	while (1) {
 		// 2. 열린목록에서 가장 낮은 F 비용 노드를 현재노드로 설정 후 닫힌 노드에 삽입
-		openList.sorting();
-		now = openList.top();
-		if (now == nullptr) { // 열린목록에 더이상 노드가 없다면
+		//openList.sorting();
+		openListIter = openList.begin();
+		
+		if (openList.empty()) { // 열린목록에 더이상 노드가 없다면
 			hasRoute = false; // 길찾기 실패
 			break;
 		}
-		openList.pop();
-		closeList.push_back(now);
-		if (isInCloseList(&finish)) { // 닫힌목록에 목표 노드가 있다면
+
+		now = *openListIter;
+		openListIter = openList.erase(openListIter);
+		closeList.insert(now);
+		if (now->xPos == finish.xPos && now->yPos == finish.yPos) { // 닫힌목록에 목표 노드가 있다면
 			hasRoute = true; // 길찾기 성공
 			break;
 		}
@@ -499,5 +534,5 @@ myNode* Astar::findRoute(unsigned int fromX, unsigned int fromY, unsigned int to
 		// 3. 현재노드에서 인접한 & 갈수있는 노드들 열린목록에 넣기
 		checkAround(now, DIAGONAL, CROSSCORNER);
 	}
-	return closeList.back();
+	return now;
 }

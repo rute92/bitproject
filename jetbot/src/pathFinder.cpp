@@ -69,7 +69,7 @@ std::list<Position> PathFinder::findCoveragePath(Position start, cv::Mat mapImag
 	while (!backTrackingList.empty()) {
 		if (show) {
 			cv::imshow("resultOrigin", resultOrigin);
-			cv::waitKey(50);
+			cv::waitKey(1);
 		}
 		
 		map.setMapData(now.x, now.y, CLEANED);
@@ -80,35 +80,44 @@ std::list<Position> PathFinder::findCoveragePath(Position start, cv::Mat mapImag
 		}
 
 		// 사방에 대해 갈수있는지 체크, 갈수있으면 x y 업데이트해줌
-		ret = doIBMotion();
+		ret = doIBMotion(now, move);
 		if (ret == 0) { // 갈곳 없으면
 			// 가장 가까운 점 찾기
 			Nearest = findNearestPosition();
 
 			// A* 써서 그 지점 갈 경로 찾기
-			fin = astar.findRoute(now.x, now.y, Nearest.x, Nearest.y); // 경로 찾기
-			while (fin->parent != nullptr) { // 저장된 노드로부터 경로 추출
-				Position tmp(fin->xPos, fin->yPos);
-				astarRoute.push_back(tmp);	// vector에 추출된 경로들 저장.
-				fin = fin->parent;
-			}
-			// pathList에 저장
-			for (auto it = astarRoute.rbegin(); it != astarRoute.rend(); ++it)
-				pathList.push_back(*it);
-			
-			if (show) {
-				printf("A* 시작 : [%d, %d]\n", now.x, now.y);
-				for (auto it = astarRoute.rbegin(); it != astarRoute.rend(); ++it) {
-					Position tmp = (*it);
-					map.setMapData(tmp.x, tmp.y, 200);
-					printf("A* 경로 좌표 : [%d, %d]\n", tmp.x, tmp.y);
+			fin = astar.findRoute(Nearest.x, Nearest.y, now.x, now.y); // 경로 찾기
+			//printf("%d\n", astar.hasFindRoute());
+			if (astar.hasFindRoute()) {	// 길 찾으면
+				while (fin->parent != nullptr) { // 저장된 노드로부터 경로 추출
+					fin = fin->parent;
+					Position tmp(fin->xPos, fin->yPos);
+					pathList.push_back(tmp);	// pathList에 저장
+					astarRoute.push_back(tmp);	// vector에 추출된 경로들 저장.
 				}
-				printf("가까운길 찾기 완료 \n\n");
-			}
-			// astarRoute 초기화 및 현재 좌표 갱신
-			astarRoute.clear();
-			now = Nearest;
+				pathList.push_back(Nearest);
 
+				if (show) {
+					printf("A* 시작 : [%d, %d]\n", now.x, now.y);
+					printf("A* 목표 : [%d, %d]\n", Nearest.x, Nearest.y);
+					for (auto it = astarRoute.begin(); it != astarRoute.end(); ++it) {
+						Position tmp = (*it);
+						map.setMapData(tmp.x, tmp.y, 200);
+						printf("A* 경로 좌표 : [%d, %d]\n", tmp.x, tmp.y);
+					}
+					printf("가까운길 찾기 완료 \n\n");
+				}
+				// astarRoute 초기화 및 현재 좌표 갱신
+				astarRoute.clear();
+				now = Nearest;
+			}
+			else {
+				printf("dfdf\n");
+				findPos = backTrackingList.find(Nearest);
+				if (findPos != backTrackingList.end()) { // 있다면
+					backTrackingList.erase(findPos); // backTrackingList에서 삭제
+				}
+			}
 		}
 		else {
 			pathList.push_back(now);
