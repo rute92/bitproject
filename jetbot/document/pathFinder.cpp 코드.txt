@@ -1,0 +1,252 @@
+pathFinder는 전체 영역을 도는 coveragePathPlanning 코드.
+SIBA 알고리즘의 IB 동작을 참고했으며 최단거리 알고리즘인 Astar 알고리즘도 사용.
+
+IB동작을 통해 coveragePath를 찾아내며 막힌길이라면 Astar를 사용해 가장 근접한 아직 가지못한 좌표로 이동.
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////                 pathFinder.h                   ////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+#pragma once
+#include "opencv2/opencv.hpp"
+#include "astar.h"
+
+#define CLEANED	128	// 이미 간 영역
+
+/*
+	좌표를 담을 Position class 선언.
+*/
+class Position {
+public:
+	int x;
+	int y;
+
+	Position();
+	Position(int _x, int _y);
+	bool operator<(const Position& pos) const;
+};
+
+/*
+	coveragePathPlanning을 위한 PathFinder class 선언.
+*/
+class PathFinder {
+	myMap map;	// 경로계획을 위한 map, astar.h에 선언돼있음
+	Position now;	// 현재 좌표
+	int move = 5;	// 한번에 이동할 값.
+	std::vector<Position> astarRoute;	// Astar로 찾은 길 저장할 곳
+	std::set<Position> backTrackingList;	// 아직 가지못한 길 담을 곳, 빠른 탐색을 위해 set으로 선언
+
+public:
+	void setMoveInterval(int _move);
+	int doIBMotion();
+	Position findNearestPosition();
+	std::list<Position> findCoveragePath(Position now, cv::Mat mapImage, int show);
+	//std::vector<Position>
+};
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////                pathFinder.cpp                 ////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+#include <iostream>
+#include <algorithm>
+#include "pathFinder.h"
+
+
+/*
+   ###################################################################################
+   ##############################  Position 클래스 정의  ##############################
+   ###################################################################################
+*/
+Position::Position()
+	: x(0), y(0)
+{
+
+}
+
+Position::Position(int _x, int _y)
+	: x(_x), y(_y)
+{
+
+}
+
+// 비교연산자 재정의, x 값 오름차순 정렬, x가 같으면 y 값 오름차순 정렬
+bool Position::operator<(const Position& pos) const {
+	if (x == pos.x)
+		return (y < pos.y);
+	else
+		return (x < pos.x);
+}
+
+/*
+   ###################################################################################
+   #############################  pathFinder 클래스 정의  #############################
+   ###################################################################################
+*/
+
+// 한번에 이동할 move 값 설정
+void PathFinder::setMoveInterval(int _move) {
+	move = _move;
+}
+
+/* 
+	주어진 맵을 전부 탐색하는 좌표 경로계획 후 List로 반환
+	start : 시작 좌표
+	mapImage : 전처리된 지도 image(갈수있는 곳: 0, 못가는 곳: 255)
+	show : 경로계획하는 image 볼지 말지, 1 이면 show, 0이면 dont_show
+*/
+std::list<Position> PathFinder::findCoveragePath(Position start, cv::Mat mapImage, int show){
+	now = start;
+	map.setMap(mapImage.cols, mapImage.rows, mapImage.data);	// Mat 클래스로 받은 image의 data로 map 생성
+	cv::Mat resultOrigin(map.getMapHeight(), map.getMapWidth(), CV_8UC1, map.getMapAddr()); // 생성된 map을 보기위해 Mat 클래스로 생성
+
+	if (show) {	// show 인자가 참이면 image show
+		//cv::namedWindow("resultOrigin", cv::WINDOW_NORMAL);
+		cv::imshow("origin", mapImage);
+	}
+	
+	// 생성된 map을 기반으로 backTrackingList에 갈 수 있는 길 담기(이동 간격은 move)
+	for (int j = start.y % move; j < map.getMapHeight(); j += move) {
+		for (int i = start.x % move; i < map.getMapWidth(); i += move) {
+			if (map.getMapData(i, j) == LOAD) {
+				backTrackingList.insert(Position(i, j));
+			}
+		}
+	}
+
+	Astar astar;	// Astar 사용을 위한 선언 및 정의
+	myNode* fin;
+	astar.setMap(map);
+
+	int ret;
+	Position Nearest;	// 막힌길일 때 최 근접 좌표 담을 곳.
+	std::set<Position>::iterator findPos;
+	std::list<Position> pathList;	// coveragePath 이동경로를 담을 list
+
+	printf("\n경로탐색 시작\n\n");
+	pathList.push_back(now);
+
+	while (!backTrackingList.empty()) {	// 갈 수 있는 곳 없을때 까지
+		if (show) {
+			cv::imshow("resultOrigin", resultOrigin);
+			cv::waitKey(1);
+		}
+		
+		map.setMapData(now.x, now.y, CLEANED);	// 현재 위치를 이미 간 곳으로 체크
+
+		findPos = backTrackingList.find(now);	// 현재 위치를 backTrackingList에서 찾아서
+		if (findPos != backTrackingList.end()) { // 있다면
+			backTrackingList.erase(findPos); // backTrackingList에서 삭제
+		}
+
+		// 사방에 대해 갈수있는지 체크, 갈수있으면 x y 업데이트해줌
+		ret = doIBMotion();
+		if (ret == 0) { // 갈곳 없으면
+			// 가장 가까운 점 찾기
+			Nearest = findNearestPosition();
+
+			// A* 써서 그 지점 갈 경로 찾기
+			fin = astar.findRoute(now.x, now.y, Nearest.x, Nearest.y); // 경로 찾기
+			while (fin->parent != nullptr) { // 저장된 노드로부터 경로 추출
+				Position tmp(fin->xPos, fin->yPos);
+				astarRoute.push_back(tmp);	// vector에 추출된 경로들 저장.
+				fin = fin->parent;
+			}
+			// pathList에 저장
+			for (auto it = astarRoute.rbegin(); it != astarRoute.rend(); ++it)
+				pathList.push_back(*it);
+			
+			if (show) {
+				printf("A* 시작 : [%d, %d]\n", now.x, now.y);
+				for (auto it = astarRoute.rbegin(); it != astarRoute.rend(); ++it) {
+					Position tmp = (*it);
+					map.setMapData(tmp.x, tmp.y, 200);
+					printf("A* 경로 좌표 : [%d, %d]\n", tmp.x, tmp.y);
+				}
+				printf("가까운길 찾기 완료 \n\n");
+			}
+
+			// astarRoute 초기화 및 현재 좌표 갱신
+			astarRoute.clear();
+			now = Nearest;
+
+		}
+		else { // 갈 곳 있으면
+			pathList.push_back(now); // pathList에 저장
+		}
+	}
+	printf("경로탐색 끝! \n");
+	if (show) {
+		cv::imshow("resultOrigin", resultOrigin);
+		cv::waitKey(0);
+		cv::destroyAllWindows();
+	}
+
+	return pathList;	// 저장된 경로가 담긴 list 반환
+}
+
+
+/*
+IB(Intellectual Boustrophedon) 동작
+	동 = x++, 
+	서 = x--, 
+	남 = y++, 
+	북 = y--, 
+	이동불가 시, return 0
+	'ㄹ' 자 형태로 남/북 동작하며 서쪽에 공간이 있으면 서쪽 우선 동작
+*/
+int PathFinder::doIBMotion()
+{
+	int ret = 1;
+	if (map.getMapData(now.x, now.y + move) == LOAD && map.getMapData(now.x - move, now.y) == LOAD) { // 남 , 서
+		//now.x--;	// 서
+		now.x -= move;
+		
+	}
+	else if (map.getMapData(now.x, now.y - move) == LOAD && map.getMapData(now.x - move, now.y) == LOAD) { // 북, 서
+		//now.x--;	// 서
+		now.x -= move;
+	}
+	else if (map.getMapData(now.x, now.y - move) == LOAD && map.getMapData(now.x, now.y + move) == LOAD) { // 북, 남
+		//now.y++;	// 남
+		now.y += move;
+	}
+	else if (map.getMapData(now.x, now.y - move) == LOAD) { // 북
+		//now.y--;	// 북
+		now.y -= move;
+	}
+	else if (map.getMapData(now.x, now.y + move) == LOAD) { // 남
+		//now.y++;	// 남
+		now.y += move;
+	}
+	else if (map.getMapData(now.x - move, now.y) == LOAD) { // 서
+		//now.x--;	// 서
+		now.x -= move;
+	}
+	else if (map.getMapData(now.x + move, now.y) == LOAD) { // 동
+		//now.x++;	// 동
+		now.x += move;
+	}
+	else {
+		ret = 0;
+	}
+
+	return ret;
+}
+
+
+/* backTrackingList 에 있는 좌표들 중 now로부터 가장 가까운 점 찾기 */
+Position PathFinder::findNearestPosition()
+{
+	double minDistance = 10000;
+	Position Nearest(now.x, now.y);	// 가장 가까운점 저장할 변수
+
+	for (auto iter = backTrackingList.begin(); iter != backTrackingList.end(); ++iter) {
+		int dist = abs((int)(now.x - (*iter).x)) + abs((int)(now.y - (*iter).y));
+		if (dist < minDistance) { // 새로 계산한 거리가 기존꺼보다 작으면
+			minDistance = dist; // minDist 업데이트
+			Nearest.x = (*iter).x;
+			Nearest.y = (*iter).y;
+		}
+	}
+
+	return Nearest;
+}

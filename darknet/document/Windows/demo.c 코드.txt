@@ -1,3 +1,12 @@
+darknet ì‹¤í–‰ ì‹œ ì›¹ìº ì€ demo.c ì˜ demo() í•¨ìˆ˜ë¥¼ ì‹¤í–‰í•¨.
+ê·¸ì— ëŒ€í•œ ì†ŒìŠ¤íŒŒì¼ì„.
+
+ì†ŒìŠ¤ ë³€ê²½, ì¶”ê°€ ë¶€ë¶„ì€ add code --> , end code <-- ë¡œ í‘œì‹œí•¨
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////                       demo.c                      ////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 #include "network.h"
 #include "detection_layer.h"
 #include "region_layer.h"
@@ -87,9 +96,9 @@ void *fetch_in_thread(void *ptr)
 	int recv_info[3];
 	int ret;
 
-	// image Á¤º¸ ¼ö½Å
+	// image ì •ë³´ ìˆ˜ì‹ 
 	ret = 0;
-	while (ret != sizeof(recv_info)) { // socket ¿¡¼­ µ¥ÀÌÅÍ ÀĞÀ» ¶§ ²÷¾î¼­ ÀĞÀ» ¼öµµ ÀÖÀ¸¹Ç·Î
+	while (ret != sizeof(recv_info)) { // socket ì—ì„œ ë°ì´í„° ì½ì„ ë•Œ ëŠì–´ì„œ ì½ì„ ìˆ˜ë„ ìˆìœ¼ë¯€ë¡œ
 		ret += recv(client_socket, (char*)recv_info + ret, sizeof(recv_info) - ret, 0);
 		if (ret < 0) {
 			perror("[recv socket] image info receive fail\n");
@@ -99,16 +108,16 @@ void *fetch_in_thread(void *ptr)
 	total_size = recv_info[0];
 	printf("[recv socket] image size : %d\n", total_size);
 
-	// image data ´ãÀ» buff »ı¼º
+	// image data ë‹´ì„ buff ìƒì„±
 	recv_data = (unsigned char*)calloc(total_size, sizeof(unsigned char));
 	if (recv_data == NULL) {
 		perror("recv_data malloc() fail\n");
 		return 0;
 	}
 
-	// image µ¥ÀÌÅÍ ¼ö½Å
+	// image ë°ì´í„° ìˆ˜ì‹ 
 	ret = 0;
-	while (ret != total_size) {	// socket ¿¡¼­ µ¥ÀÌÅÍ ÀĞÀ» ¶§ ²÷¾î¼­ ÀĞÀ» ¼öµµ ÀÖÀ¸¹Ç·Î
+	while (ret != total_size) {	// socket ì—ì„œ ë°ì´í„° ì½ì„ ë•Œ ëŠì–´ì„œ ì½ì„ ìˆ˜ë„ ìˆìœ¼ë¯€ë¡œ
 		ret += recv(client_socket, (char*)recv_data + ret, total_size - ret, 0);
 		if (ret < 0) {
 			perror("[recv socket] image data receive fail\n");
@@ -116,7 +125,7 @@ void *fetch_in_thread(void *ptr)
 		}
 	}
 
-	// mode Á¤º¸ ¼ö½Å??
+	// mode ì •ë³´ ìˆ˜ì‹ ??
 	ret = 0;
 	while (ret != sizeof(mode_info)) {
 		ret += recv(client_socket, mode_info + ret, sizeof(mode_info) - ret, 0);
@@ -126,7 +135,7 @@ void *fetch_in_thread(void *ptr)
 		}
 	}
 
-	// opencv ÇÔ¼ö·Î ³Ñ±â±â
+	// opencv í•¨ìˆ˜ë¡œ ë„˜ê¸°ê¸°
 	in_s = get_image_from_socket(recv_data, net.w, net.h, net.c, total_size, &in_img);
 
 	///////////////////////// <-- end code ////////////////////////////
@@ -176,14 +185,14 @@ double get_wall_time()
 }
 
 ///////////////////////// add code --> ////////////////////////////
-/* time check ÇØ¼­ ÇØ´ç class °¡ ÀÏÁ¤ ½Ã°£ÀÌ»ó ÀâÈ÷¸é »çÁøÀúÀå */
+/* time check í•´ì„œ í•´ë‹¹ class ê°€ ì¼ì • ì‹œê°„ì´ìƒ ì¡íˆë©´ ì‚¬ì§„ì €ì¥ */
 void webcam_capture()
 {
 
 	time_t t = time(NULL);
 	struct tm tm = *localtime(&t);
-	//char from_buff = '0'; // Á¤Áö ¸í·É À§ÇÑ º¯¼ö
-	send_buff[1] = '0';	// ¸í·É ÃÊ±âÈ­
+	//char from_buff = '0'; // ì •ì§€ ëª…ë ¹ ìœ„í•œ ë³€ìˆ˜
+	send_buff[1] = '0';	// ëª…ë ¹ ì´ˆê¸°í™”
 	send_buff[2] = '0';
 
 	per_time = get_wall_time() - per_chk_time;
@@ -191,22 +200,22 @@ void webcam_capture()
 	{
 		if (per_time > 2.)
 		{
-			send_buff[1] = '5';	// ÀÏÁ¤ ½Ã°£ÀÌ»ó ¹ß°ß ½Ã Á¤Áö ¸í·É
+			send_buff[1] = '5';	// ì¼ì • ì‹œê°„ì´ìƒ ë°œê²¬ ì‹œ ì •ì§€ ëª…ë ¹
 		}
 		if (per_time > 5.)
 		{
 			char filename[256];
 			sprintf(filename, "capture/person/%d%02d%02d_%02d%02d%02d.jpg", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
-				tm.tm_hour, tm.tm_min, tm.tm_sec); //½Ã°£ µ¿±âÈ­¿¡ µû¶ó tm.tm_hour ºÎºĞ ¼öÁ¤ÇØÁÖ±â
+				tm.tm_hour, tm.tm_min, tm.tm_sec); //ì‹œê°„ ë™ê¸°í™”ì— ë”°ë¼ tm.tm_hour ë¶€ë¶„ ìˆ˜ì •í•´ì£¼ê¸°
 			save_cv_jpg(show_img, filename);
-			send_buff[1] = '0'; // Á¤Áö ¸í·É ÇØÁ¦
-			send_buff[2] = '1'; // person Ä¸Ã³ flag
+			send_buff[1] = '0'; // ì •ì§€ ëª…ë ¹ í•´ì œ
+			send_buff[2] = '1'; // person ìº¡ì²˜ flag
 			per_chk_time = get_wall_time();
 		}
 	}
 	else { //per_chk==0
 		per_chk_time = get_wall_time();
-		//send_buff[1] = '0'; // Á¤Áö ¸í·É ÇØÁ¦
+		//send_buff[1] = '0'; // ì •ì§€ ëª…ë ¹ í•´ì œ
 	}
 
 	fire_time = get_wall_time() - fire_chk_time;
@@ -214,7 +223,7 @@ void webcam_capture()
 	{
 		if (fire_time > 2.)
 		{
-			send_buff[1] = '5'; // ÀÏÁ¤ ½Ã°£ÀÌ»ó ¹ß°ß ½Ã Á¤Áö ¸í·É
+			send_buff[1] = '5'; // ì¼ì • ì‹œê°„ì´ìƒ ë°œê²¬ ì‹œ ì •ì§€ ëª…ë ¹
 		}
 		if (fire_time > 5.)
 		{
@@ -223,13 +232,13 @@ void webcam_capture()
 				tm.tm_hour, tm.tm_min, tm.tm_sec);
 			save_cv_jpg(show_img, filename);
 			send_buff[1] = '0';
-			send_buff[2] = '2'; // fire Ä¸Ã³ flag
+			send_buff[2] = '2'; // fire ìº¡ì²˜ flag
 			fire_chk_time = get_wall_time();
 		}
 	}
 	else {
 		fire_chk_time = get_wall_time();
-		//send_buff[1] = '0'; // Á¤Áö ¸í·É ÇØÁ¦
+		//send_buff[1] = '0'; // ì •ì§€ ëª…ë ¹ í•´ì œ
 	}
 
 }
@@ -283,39 +292,39 @@ void demo(char *cfgfile, char *weightfile, float thresh, float hier_thresh, int 
 	SOCKADDR_IN server_addr, client_addr;
 	int client_addr_size;
 
-	// winsock ÃÊ±âÈ­, ¹öÀü 2.2
+	// winsock ì´ˆê¸°í™”, ë²„ì „ 2.2
 	if (0 < WSAStartup(MAKEWORD(2, 2), &wsa_data)) {
 		perror("WSAStartup() error\n");
 		return 0;
 	}
 
-	// server socket »ı¼º
+	// server socket ìƒì„±
 	server_socket = socket(PF_INET, SOCK_STREAM, 0);
 	if (INVALID_SOCKET == server_socket) {
 		perror("socket() error\n");
 		return 0;
 	}
 
-	// server addr ÃÊ±âÈ­
+	// server addr ì´ˆê¸°í™”
 	memset(&server_addr, 0, sizeof(server_addr));
 	server_addr.sin_family = AF_INET;
 	server_addr.sin_port = htons(PORT_NUM);
 	server_addr.sin_addr.s_addr = htonl(INADDR_ANY);
 
-	// server socket ¹× addr Á¤º¸¸¦ Ä¿³Î¿¡ µî·Ï
+	// server socket ë° addr ì •ë³´ë¥¼ ì»¤ë„ì— ë“±ë¡
 	if (SOCKET_ERROR == bind(server_socket, (SOCKADDR*)&server_addr, sizeof(server_addr))) {
 		perror("bind() error\n");
 		return 0;
 	}
 
-	// client ÀÇ connect ´ë±â
+	// client ì˜ connect ëŒ€ê¸°
 	if (SOCKET_ERROR == listen(server_socket, 5)) {
 		perror("listen() error\n");
 		return 0;
 	}
 	printf("wait for client connection...\n");
 
-	// client connect ¼ö¶ô
+	// client connect ìˆ˜ë½
 	client_addr_size = sizeof(client_addr);
 	client_socket = accept(server_socket, (SOCKADDR*)&client_addr, &client_addr_size);
 
@@ -465,39 +474,39 @@ void demo(char *cfgfile, char *weightfile, float thresh, float hier_thresh, int 
 			mode = atoi(mode_info);
 			printf("[mode]: %d\n", mode);
 			
-			if (mode == 110) { // ¿ÜÃâ Ã»¼Ò ¸ğµå
+			if (mode == 110) { // ì™¸ì¶œ ì²­ì†Œ ëª¨ë“œ
 				draw_detections_cv_v3(show_img, local_dets, local_nboxes, demo_thresh, demo_names, demo_alphabet, demo_classes, demo_ext_output, mode, -1, NULL, NULL, NULL);
 			}
-			else if (mode == 310) { // tracking ¸ğµå
+			else if (mode == 310) { // tracking ëª¨ë“œ
 				tracking = draw_detections_cv_v3(show_img, local_dets, local_nboxes, demo_thresh, demo_names, demo_alphabet, demo_classes, demo_ext_output, mode, 1, &target_xval, &target_wval, &target_hval);
 
-				// ÃßÀû ¸ñÇ¥ °¨Áö µÇ¸é
+				// ì¶”ì  ëª©í‘œ ê°ì§€ ë˜ë©´
 				if (tracking) {
 					distance_val = target_wval * target_hval;
 					printf("[darknet] dog tracking");
 					printf("dist: %f\n", distance_val);
 					if (target_xval > 0.6) {
-						printf("¿ìÃøÀ¸·Î Ä¡¿ìÄ§");
-						// ÁÂ¿ì Á¦¾îÇÏ°Ô µ¿ÀÛ¸í·É
+						printf("ìš°ì¸¡ìœ¼ë¡œ ì¹˜ìš°ì¹¨");
+						// ì¢Œìš° ì œì–´í•˜ê²Œ ë™ì‘ëª…ë ¹
 						send_buff[1] = '3';
 					}
 					else if (target_xval < 0.4) {
-						printf("ÁÂÃøÀ¸·Î Ä¡¿ìÄ§");
-						// ÁÂ¿ì Á¦¾îÇÏ°Ô µ¿ÀÛ¸í·É
+						printf("ì¢Œì¸¡ìœ¼ë¡œ ì¹˜ìš°ì¹¨");
+						// ì¢Œìš° ì œì–´í•˜ê²Œ ë™ì‘ëª…ë ¹
 						send_buff[1] = '2';
 					}
 					else {
-						printf("Å¸°Ù Áß¾Ó!");
-						// Á÷Áø
+						printf("íƒ€ê²Ÿ ì¤‘ì•™!");
+						// ì§ì§„
 						send_buff[1] = '1';
 					}
 					if (distance_val > 0.5) {
-						printf("Á¤Áö");
-						// Å¸°Ù °¡±î¿ò
+						printf("ì •ì§€");
+						// íƒ€ê²Ÿ ê°€ê¹Œì›€
 						send_buff[1] = '5';
 					}
 				}
-				else // ÃßÀû ¸ñÇ¥ °¨Áö ¾ÈµÇ¸é
+				else // ì¶”ì  ëª©í‘œ ê°ì§€ ì•ˆë˜ë©´
 					send_buff[1] = '5';
 			}
 			else
@@ -574,9 +583,9 @@ void demo(char *cfgfile, char *weightfile, float thresh, float hier_thresh, int 
 				send_buff[2] = '0';
 			}
 
-			// »çÁø Ä¸Ã³ÇßÀ¸¸é
+			// ì‚¬ì§„ ìº¡ì²˜í–ˆìœ¼ë©´
 			if (send_buff[2] != '0') {
-				// img ¸¦ jpg·Î ¹İÈ¯
+				// img ë¥¼ jpgë¡œ ë°˜í™˜
 				if (!(jpg_data = mat_to_jpg_cv(&show_img, jpg_data, 50, &jpg_size)))
 					printf("jpg convert fail!\n");
 			}
@@ -624,16 +633,16 @@ void demo(char *cfgfile, char *weightfile, float thresh, float hier_thresh, int 
 			return 0;
 		}
 
-		// »çÁø Ä¸Ã³ÇßÀ¸¸é Ä¸Ã³ÇÑ »çÁø Àü¼Û
+		// ì‚¬ì§„ ìº¡ì²˜í–ˆìœ¼ë©´ ìº¡ì²˜í•œ ì‚¬ì§„ ì „ì†¡
 		if (send_buff[2] != '0') {
-			// jpg size ¼Û½Å
+			// jpg size ì†¡ì‹ 
 			if (send(client_socket, (char*)(&jpg_size), sizeof(int), 0) < 0) {
 				perror("[send socket] jpg_size write fail\n");
 				return 0;
 			}
 
 			//printf("size: %d, jpg_data: %p\n", jpg_size, jpg_data);
-			// jpg data ¼Û½Å
+			// jpg data ì†¡ì‹ 
 			if (send(client_socket, jpg_data, jpg_size, 0) < 0) {
 				perror("[send socket] jpg_data write fail\n");
 				return 0;
