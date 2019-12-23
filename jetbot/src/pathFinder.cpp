@@ -37,12 +37,11 @@ void PathFinder::setMoveInterval(int _move) {
 
 /* 주어진 맵을 전부 탐색하는 좌표 List 반환 */
 std::list<Position> PathFinder::findCoveragePath(Position start, cv::Mat mapImage, int show){
-	now = start;	// test 80, 80
+
 	map.setMap(mapImage.cols, mapImage.rows, mapImage.data);
 	cv::Mat resultOrigin(map.getMapHeight(), map.getMapWidth(), CV_8UC1, map.getMapAddr());
 
 	if (show) {
-		cv::namedWindow("resultOrigin", cv::WINDOW_NORMAL);
 		cv::imshow("origin", mapImage);
 	}
 	
@@ -53,7 +52,7 @@ std::list<Position> PathFinder::findCoveragePath(Position start, cv::Mat mapImag
 			}
 		}
 	}
-
+	
 	Astar astar;
 	myNode* fin;
 	astar.setMap(map);
@@ -62,6 +61,13 @@ std::list<Position> PathFinder::findCoveragePath(Position start, cv::Mat mapImag
 	Position Nearest;
 	std::set<Position>::iterator findPos;
 	std::list<Position> pathList;
+
+	if (map.getMapData(start.x, start.y) != LOAD) {
+		printf("start position is object!\n");
+		Nearest = findNearestPosition();
+		now = Nearest;
+	}
+	now = start;
 
 	printf("\n경로탐색 시작\n\n");
 	pathList.push_back(now);
@@ -112,7 +118,6 @@ std::list<Position> PathFinder::findCoveragePath(Position start, cv::Mat mapImag
 				now = Nearest;
 			}
 			else {
-				printf("dfdf\n");
 				findPos = backTrackingList.find(Nearest);
 				if (findPos != backTrackingList.end()) { // 있다면
 					backTrackingList.erase(findPos); // backTrackingList에서 삭제
