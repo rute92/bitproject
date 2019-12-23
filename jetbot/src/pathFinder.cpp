@@ -2,6 +2,7 @@
 #include <algorithm>
 #include "pathFinder.h"
 
+#define RESIZEFACTOR	0.2
 
 /*
    ###################################################################################
@@ -42,6 +43,7 @@ std::list<Position> PathFinder::findCoveragePath(Position start, cv::Mat mapImag
 	cv::Mat resultOrigin(map.getMapHeight(), map.getMapWidth(), CV_8UC1, map.getMapAddr());
 
 	if (show) {
+		//cv::namedWindow("resultOrigin", cv::WINDOW_NORMAL);
 		cv::imshow("origin", mapImage);
 	}
 	
@@ -118,6 +120,7 @@ std::list<Position> PathFinder::findCoveragePath(Position start, cv::Mat mapImag
 				now = Nearest;
 			}
 			else {
+				//printf("dfdf\n");
 				findPos = backTrackingList.find(Nearest);
 				if (findPos != backTrackingList.end()) { // 있다면
 					backTrackingList.erase(findPos); // backTrackingList에서 삭제
@@ -148,7 +151,7 @@ IB(Intellectual Boustrophedon) 동작
 	이동불가 시, return 0
 	'ㄹ' 자 형태로 남/북 동작하며 서쪽에 공간이 있으면 서쪽 우선 동작
 */
-int PathFinder::doIBMotion()
+int PathFinder::doIBMotion(Position& now, int move)
 {
 	int ret = 1;
 	if (map.getMapData(now.x, now.y + move) == LOAD && map.getMapData(now.x - move, now.y) == LOAD) { // 남 , 서

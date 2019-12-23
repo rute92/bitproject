@@ -24,8 +24,9 @@ class PathFinder {
 
 public:
 	void setMoveInterval(int _move);
-	int doIBMotion();
+	int doIBMotion(Position& now, int move);
 	Position findNearestPosition();
 	std::list<Position> findCoveragePath(Position now, cv::Mat mapImage, int show);
+	//std::list<Position> findCoveragePathResized(Position start, cv::Mat mapImage, int show);
 	//std::vector<Position>
 };
