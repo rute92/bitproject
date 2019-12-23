@@ -1,6 +1,7 @@
 #pragma once
 #include <vector>
 #include <list>
+#include <set>
 
 #define LOAD	0
 #define OBJECT	255
@@ -22,6 +23,7 @@ public:
 	myNode(unsigned _x, unsigned _y);
 	myNode(unsigned _x, unsigned _y, myNode* _parent);
 
+	bool operator<(const myNode& node) const;
 	bool compNode(myNode* node);
 	void initNode();
 };
@@ -68,14 +70,36 @@ public:
 	size_t getSize();
 };
 
+struct compareCloseList {
+	bool operator()(const myNode* first, const myNode* second) const {
+		if (first->xPos == second->xPos)
+			return first->yPos < second->yPos;
+		else
+			return first->xPos < second->xPos;
+	}
+};
+
+struct compareOpenList {
+	bool operator()(const myNode* first, const myNode* second) const {
+		if (first->fScore == second->fScore)
+			return compCloseList(first, second);
+		else
+			return first->fScore < second->fScore;
+	}
+
+private:
+	compareCloseList compCloseList;
+};
 
 class Astar {
 	myMap map;
 	myNode start;
 	myNode finish;
 
-	pqueue openList;
-	std::vector<myNode*> closeList;
+	//pqueue openList;
+	//std::vector<myNode*> closeList;
+	std::set<myNode*, compareOpenList> openList;
+	std::set<myNode*, compareCloseList> closeList;
 	bool hasRoute;
 
 public:
@@ -88,6 +112,7 @@ public:
 	void setFinish(unsigned int _x, unsigned int _y);
 	void setMap(int _x, int _y, unsigned char* _map_data);
 	void setMap(const myMap& _map);
+	bool hasFindRoute();
 	int calcH(myNode* const from, myNode* const to);
 	int calcG(myNode* const from, int diag);
 	void calcF(myNode* temp, int diag);
@@ -95,6 +120,7 @@ public:
 	void printMapAll();
 	void setPathToMap(myNode* fin);
 	bool isInCloseList(myNode* node);
+	//bool isInCloseList(unsigned int x, unsigned int y);
 	bool checkAround(myNode* node, bool allowDiagonal, bool crossCorner);
 	myNode* findRoute(unsigned int fromX, unsigned int fromY, unsigned int toX, unsigned int toY);
 };
