@@ -14,9 +14,14 @@
 #include <sys/time.h>
 #endif
 
-
-///////////////////////// add code --> ////////////////////////////
+// add code -->
 #include <stdlib.h>
+#define STREAM_FROM_JETBOT
+#define FROM_YOLO_PATH  "./from_yolo"
+#define TO_YOLO_PATH    "./to_yolo"
+
+#ifndef STREAM_FROM_JETBOT
+#else
 #include <WinSock2.h>
 
 #define PORT_NUM    4000
@@ -25,7 +30,7 @@
 SOCKET server_socket, client_socket;
 static int total_size;
 unsigned char* recv_data;
-
+#endif
 
 extern int per_chk, fire_chk;
 double per_chk_time, fire_chk_time;
@@ -34,7 +39,7 @@ FILE* from_yolo_fp, *to_yolo_fp;
 int mode;
 char mode_info[3];
 char send_buff[3];
-///////////////////////// <-- end code ////////////////////////////
+// end code <--
 
 #ifdef OPENCV
 
@@ -77,13 +82,15 @@ void *fetch_in_thread(void *ptr)
 {
 	int dont_close_stream = 0;    // set 1 if your IP-camera periodically turns off and turns on video-stream
 
-	// origin code
-	// if (letter_box)
-		// in_s = get_image_from_stream_letterbox(cap, net.w, net.h, net.c, &in_img, dont_close_stream);
-	// else
-		// in_s = get_image_from_stream_resize(cap, net.w, net.h, net.c, &in_img, dont_close_stream);
-	
-	///////////////////////// add code --> ////////////////////////////
+								  // add code -->
+#ifndef STREAM_FROM_JETBOT
+								  // origin code
+	if (letter_box)
+		in_s = get_image_from_stream_letterbox(cap, net.w, net.h, net.c, &in_img, dont_close_stream);
+	else
+		in_s = get_image_from_stream_resize(cap, net.w, net.h, net.c, &in_img, dont_close_stream);
+#else
+
 	int recv_info[3];
 	int ret;
 
@@ -116,7 +123,7 @@ void *fetch_in_thread(void *ptr)
 		}
 	}
 
-	// mode 정보 수신??
+	// mode 정보 수신
 	ret = 0;
 	while (ret != sizeof(mode_info)) {
 		ret += recv(client_socket, mode_info + ret, sizeof(mode_info) - ret, 0);
@@ -126,10 +133,12 @@ void *fetch_in_thread(void *ptr)
 		}
 	}
 
+
 	// opencv 함수로 넘기기
 	in_s = get_image_from_socket(recv_data, net.w, net.h, net.c, total_size, &in_img);
 
-	///////////////////////// <-- end code ////////////////////////////
+#endif
+	// end code <--
 
 	if (!in_s.data) {
 		printf("Stream closed.\n");
@@ -175,30 +184,30 @@ double get_wall_time()
 	return (double)walltime.tv_sec + (double)walltime.tv_usec * .000001;
 }
 
-///////////////////////// add code --> ////////////////////////////
+// add code -->
 /* time check 해서 해당 class 가 일정 시간이상 잡히면 사진저장 */
 void webcam_capture()
 {
 
 	time_t t = time(NULL);
 	struct tm tm = *localtime(&t);
-	//char from_buff = '0'; // 정지 명령 위한 변수
+	//int stop_flag[2] = { 0, 0 }; // 정지 명령 위한 변수
 	send_buff[1] = '0';	// 명령 초기화
 	send_buff[2] = '0';
 
 	per_time = get_wall_time() - per_chk_time;
 	if (per_chk == 1)
 	{
-		if (per_time > 2.)
+		if (per_time > 0.5)
 		{
 			send_buff[1] = '5';	// 일정 시간이상 발견 시 정지 명령
 		}
-		if (per_time > 5.)
+		if (per_time > 3.)
 		{
-			char filename[256];
-			sprintf(filename, "capture/person/%d%02d%02d_%02d%02d%02d.jpg", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
-				tm.tm_hour, tm.tm_min, tm.tm_sec); //시간 동기화에 따라 tm.tm_hour 부분 수정해주기
-			save_cv_jpg(show_img, filename);
+			//char filename[256];
+			//sprintf(filename, "capture/person/%d%02d%02d_%02d%02d%02d.jpg", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
+			//	tm.tm_hour, tm.tm_min, tm.tm_sec); //시간 동기화에 따라 tm.tm_hour 부분 수정해주기
+			//save_cv_jpg(show_img, filename);
 			send_buff[1] = '0'; // 정지 명령 해제
 			send_buff[2] = '1'; // person 캡처 flag
 			per_chk_time = get_wall_time();
@@ -212,16 +221,16 @@ void webcam_capture()
 	fire_time = get_wall_time() - fire_chk_time;
 	if (fire_chk == 1)
 	{
-		if (fire_time > 2.)
+		if (fire_time > 0.5)
 		{
 			send_buff[1] = '5'; // 일정 시간이상 발견 시 정지 명령
 		}
-		if (fire_time > 5.)
+		if (fire_time > 3.)
 		{
-			char filename[256];
-			sprintf(filename, "capture/fire/%d%02d%02d_%02d%02d%02d.jpg", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
-				tm.tm_hour, tm.tm_min, tm.tm_sec);
-			save_cv_jpg(show_img, filename);
+			//char filename[256];
+			//sprintf(filename, "capture/fire/%d%02d%02d_%02d%02d%02d.jpg", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
+			//	tm.tm_hour, tm.tm_min, tm.tm_sec);
+			//save_cv_jpg(show_img, filename);
 			send_buff[1] = '0';
 			send_buff[2] = '2'; // fire 캡처 flag
 			fire_chk_time = get_wall_time();
@@ -233,7 +242,7 @@ void webcam_capture()
 	}
 
 }
-///////////////////////// <-- end code ////////////////////////////
+// end code <--
 
 void demo(char *cfgfile, char *weightfile, float thresh, float hier_thresh, int cam_index, const char *filename, char **names, int classes,
 	int frame_skip, char *prefix, char *out_filename, int mjpeg_port, int json_port, int dont_show, int ext_output, int letter_box_in)
@@ -258,26 +267,25 @@ void demo(char *cfgfile, char *weightfile, float thresh, float hier_thresh, int 
 	calculate_binary_weights(net);
 	srand(2222222);
 
+	// add code -->
+#ifndef STREAM_FROM_JETBOT
 	// origin code
-	// if (filename) {
-		// printf("video file: %s\n", filename);
-		// cap = get_capture_video_stream(filename);
-	// }
-	// else {
-		// printf("Webcam index: %d\n", cam_index);
-		// cap = get_capture_webcam(cam_index);
-	// }
+	if (filename) {
+		printf("video file: %s\n", filename);
+		cap = get_capture_video_stream(filename);
+	}
+	else {
+		printf("Webcam index: %d\n", cam_index);
+		cap = get_capture_webcam(cam_index);
+	}
 
-	// if (!cap) {
-// #ifdef WIN32
-		// printf("Check that you have copied file opencv_ffmpeg340_64.dll to the same directory where is darknet.exe \n");
-// #endif
-		// error("Couldn't connect to webcam.\n");
-	// }
-	
-	
-	///////////////////////// add code --> ////////////////////////////
-
+	if (!cap) {
+#ifdef WIN32
+		printf("Check that you have copied file opencv_ffmpeg340_64.dll to the same directory where is darknet.exe \n");
+#endif
+		error("Couldn't connect to webcam.\n");
+	}
+#else
 	// socket define
 	WSADATA wsa_data;
 	SOCKADDR_IN server_addr, client_addr;
@@ -325,6 +333,8 @@ void demo(char *cfgfile, char *weightfile, float thresh, float hier_thresh, int 
 	}
 	printf("connected!\n\n");
 
+#endif
+
 	int ret, tracking, manual;
 	unsigned char* jpg_data = NULL;
 	int jpg_size = 0;
@@ -334,7 +344,7 @@ void demo(char *cfgfile, char *weightfile, float thresh, float hier_thresh, int 
 	float target_hval = .0f;
 	float distance_val = .0f;
 
-	///////////////////////// <-- end code ////////////////////////////
+	// end code <--
 
 	layer l = net.layers[net.n - 1];
 	int j;
@@ -359,30 +369,34 @@ void demo(char *cfgfile, char *weightfile, float thresh, float hier_thresh, int 
 	det_img = in_img;
 	det_s = in_s;
 
-	///////////////////////// add code --> ////////////////////////////
+	// add code -->
+#ifndef STREAM_FROM_JETBOT
+#else
 	send_buff[0] = 'o';
 	ret = send(client_socket, send_buff, sizeof(send_buff), 0);
 	if (ret < 0) {
 		perror("[send socket] message write fail\n");
 		return 0;
 	}
-	
-	///////////////////////// <-- end code ////////////////////////////
+#endif
+	// end code <--
 
 	fetch_in_thread(0);
 	detect_in_thread(0);
 	det_img = in_img;
 	det_s = in_s;
 
-	///////////////////////// add code --> ////////////////////////////
+	// add code -->
+#ifndef STREAM_FROM_JETBOT
+#else
 	send_buff[0] = 'o';
 	ret = send(client_socket, send_buff, sizeof(send_buff), 0);
 	if (ret < 0) {
 		perror("[send socket] message write fail\n");
 		return 0;
 	}
-
-	///////////////////////// <-- end code ////////////////////////////
+#endif
+	// end code <--
 
 	for (j = 0; j < NFRAMES / 2; ++j) {
 		fetch_in_thread(0);
@@ -390,15 +404,17 @@ void demo(char *cfgfile, char *weightfile, float thresh, float hier_thresh, int 
 		det_img = in_img;
 		det_s = in_s;
 
-		///////////////////////// add code --> ////////////////////////////
+		// add code -->
+#ifndef STREAM_FROM_JETBOT
+#else
 		send_buff[0] = 'o';
 		ret = send(client_socket, send_buff, sizeof(send_buff), 0);
 		if (ret < 0) {
 			perror("[send socket] message write fail\n");
 			return 0;
 		}
-
-		///////////////////////// <-- end code ////////////////////////////
+#endif
+		// end code <--
 
 	}
 
@@ -427,12 +443,10 @@ void demo(char *cfgfile, char *weightfile, float thresh, float hier_thresh, int 
 	}
 
 	double before = get_wall_time();
-	
-	///////////////////////// add code --> ////////////////////////////
+	// add code -->
 	per_chk_time = get_wall_time();
 	fire_chk_time = get_wall_time();
-	
-	///////////////////////// <-- end code ////////////////////////////
+	// end code <--
 
 	while (1) {
 		++count;
@@ -457,42 +471,43 @@ void demo(char *cfgfile, char *weightfile, float thresh, float hier_thresh, int 
 				int timeout = 400000;
 				send_json(local_dets, local_nboxes, l.classes, demo_names, frame_id, demo_json_port, timeout);
 			}
-			
+
+			// add code -->
+
+			mode = atoi(mode_info);
+			//mode = mode_info[0] - 48;
+			//manual = mode_info[1] - 48;
+			printf("[mode]: %d\n", mode);
+			//printf("[manual]: %d\n", manual);
 			// origin
 			//draw_detections_cv_v3(show_img, local_dets, local_nboxes, demo_thresh, demo_names, demo_alphabet, demo_classes, demo_ext_output);
-
-			///////////////////////// add code --> ////////////////////////////
-			mode = atoi(mode_info);
-			printf("[mode]: %d\n", mode);
-			
 			if (mode == 110) { // 외출 청소 모드
 				draw_detections_cv_v3(show_img, local_dets, local_nboxes, demo_thresh, demo_names, demo_alphabet, demo_classes, demo_ext_output, mode, -1, NULL, NULL, NULL);
 			}
 			else if (mode == 310) { // tracking 모드
 				tracking = draw_detections_cv_v3(show_img, local_dets, local_nboxes, demo_thresh, demo_names, demo_alphabet, demo_classes, demo_ext_output, mode, 1, &target_xval, &target_wval, &target_hval);
-
+				printf("[darknet] dog tracking\n");
 				// 추적 목표 감지 되면
 				if (tracking) {
 					distance_val = target_wval * target_hval;
-					printf("[darknet] dog tracking");
 					printf("dist: %f\n", distance_val);
 					if (target_xval > 0.6) {
-						printf("우측으로 치우침");
-						// 좌우 제어하게 동작명령
-						send_buff[1] = '3';
-					}
-					else if (target_xval < 0.4) {
-						printf("좌측으로 치우침");
+						printf("우측으로 치우침\n");
 						// 좌우 제어하게 동작명령
 						send_buff[1] = '2';
 					}
+					else if (target_xval < 0.4) {
+						printf("좌측으로 치우침\n");
+						// 좌우 제어하게 동작명령
+						send_buff[1] = '3';
+					}
 					else {
-						printf("타겟 중앙!");
+						printf("타겟 중앙!\n");
 						// 직진
 						send_buff[1] = '1';
 					}
-					if (distance_val > 0.5) {
-						printf("정지");
+					if (distance_val > 0.2) {
+						printf("정지\n");
 						// 타겟 가까움
 						send_buff[1] = '5';
 					}
@@ -502,26 +517,21 @@ void demo(char *cfgfile, char *weightfile, float thresh, float hier_thresh, int 
 			}
 			else
 				send_buff[1] = '0';
-			
-			///////////////////////// <-- end code ////////////////////////////
-			
+			// end code <--
 			free_detections(local_dets, local_nboxes);
 
 			printf("\nFPS:%.1f\n", fps);
 
 			if (!prefix) {
 				if (!dont_show) {
+					// add code -->
 					//origin
 					//show_image_mat(show_img, "Demo");
-					
-					///////////////////////// add code --> ////////////////////////////
 					if (mode == 110 || mode == 310)
 						show_image_mat(show_img, "Demo");
 					else
 						show_image_mat(in_img, "Demo");
-					
-					///////////////////////// <-- end code ////////////////////////////
-					
+					// end code <--
 					int c = wait_key_cv(1);
 					if (c == 10) {
 						if (frame_skip == 0) frame_skip = 60;
@@ -533,15 +543,17 @@ void demo(char *cfgfile, char *weightfile, float thresh, float hier_thresh, int 
 					{
 						flag_exit = 1;
 
-						///////////////////////// add code --> ////////////////////////////
+						// add code -->
+#ifndef STREAM_FROM_JETBOT
+#else
 						send_buff[0] = 'c';
 						ret = send(client_socket, send_buff, sizeof(send_buff), 0);
 						if (ret < 0) {
 							perror("[send socket] message write fail\n");
 							return 0;
 						}
-
-						///////////////////////// <-- end code ////////////////////////////
+#endif
+						// end code <--
 					}
 				}
 			}
@@ -565,13 +577,14 @@ void demo(char *cfgfile, char *weightfile, float thresh, float hier_thresh, int 
 				printf("\n cvWriteFrame \n");
 			}
 
-			///////////////////////// add code --> ////////////////////////////
+			// add code -->
 			// capture image
 			if (mode == 110)
 				webcam_capture();
 			else {
-				send_buff[1] = '0';
 				send_buff[2] = '0';
+				per_chk_time = get_wall_time();
+				fire_chk_time = get_wall_time();
 			}
 
 			// 사진 캡처했으면
@@ -580,18 +593,19 @@ void demo(char *cfgfile, char *weightfile, float thresh, float hier_thresh, int 
 				if (!(jpg_data = mat_to_jpg_cv(&show_img, jpg_data, 50, &jpg_size)))
 					printf("jpg convert fail!\n");
 			}
-			
-			///////////////////////// <-- end code ////////////////////////////
+			// end code <--
 
 			release_mat(&show_img);
 
 			pthread_join(fetch_thread, 0);
 			pthread_join(detect_thread, 0);
 
-			///////////////////////// add code --> ////////////////////////////
+			// add code -->
+#ifndef STREAM_FROM_JETBOT
+#else
 			free(recv_data);
-			
-			///////////////////////// <-- end code ////////////////////////////
+#endif
+			// end code <--
 
 			if (flag_exit == 1) break;
 
@@ -614,7 +628,9 @@ void demo(char *cfgfile, char *weightfile, float thresh, float hier_thresh, int 
 		}
 
 
-		///////////////////////// add code --> ////////////////////////////
+		// add code -->
+#ifndef STREAM_FROM_JETBOT
+#else
 		send_buff[0] = mode_info[0];
 
 		printf("[send_buff] %c, %c, %c\n", send_buff[0], send_buff[1], send_buff[2]);
@@ -640,7 +656,8 @@ void demo(char *cfgfile, char *weightfile, float thresh, float hier_thresh, int 
 			}
 			free(jpg_data);
 		}
-		///////////////////////// <-- end code ////////////////////////////
+#endif
+		// end code <--
 	}
 	printf("input video stream closed. \n");
 	if (output_video_writer) {
@@ -653,9 +670,12 @@ void demo(char *cfgfile, char *weightfile, float thresh, float hier_thresh, int 
 	release_mat(&in_img);
 	free_image(in_s);
 
-	///////////////////////// add code --> ////////////////////////////
+	// add code -->
+#ifndef STREAM_FROM_JETBOT
+#else
 	free(recv_data);
-	///////////////////////// <-- end code ////////////////////////////
+#endif
+	// end code <--
 
 	free(avg);
 	for (j = 0; j < NFRAMES; ++j) free(predictions[j]);

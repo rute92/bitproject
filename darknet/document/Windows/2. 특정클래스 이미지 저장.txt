@@ -52,41 +52,39 @@ webcam_caputre() 함수 정의
     {
         time_t t = time(NULL);
         struct tm tm = *localtime(&t);
-        char from_buff = '0';
+        send_buff[1] = '0';	// 명령 초기화
+        send_buff[2] = '0';
 
+        per_time = get_wall_time() - per_chk_time;
         if (per_chk == 1)
         {
             per_time = get_wall_time() - per_chk_time;
-            if (per_time > 1.)
+            if (per_time > 2.)
             {
-                from_buff = '5';
+                send_buff[1] = '5';	// 일정 시간이상 발견 시 정지 명령
             }
-            if (per_time > 3.)
+            if (per_time > 5.)
             {
-                char filename[256];
-                sprintf(filename, "capture//person/%d%02d%02d_%02d%02d%02d.jpg", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
-                    tm.tm_hour, tm.tm_min, tm.tm_sec); //시간 동기화에 따라 tm.tm_hour 부분 수정해주기
-                save_cv_jpg(show_img, filename);
-                per_chk_time = get_wall_time();			
+                send_buff[1] = '0'; // 정지 명령 해제
+                send_buff[2] = '1'; // person 캡처 flag
+                per_chk_time = get_wall_time();
             }
         }
         else { //per_chk==0
             per_chk_time = get_wall_time();
         }
 
+        fire_time = get_wall_time() - fire_chk_time;
         if (fire_chk == 1)
         {
-            fire_time = get_wall_time() - fire_chk_time;
-            if (fire_time > 1.)
+            if (fire_time > 2.)
             {
-                from_buff = '5';
+                send_buff[1] = '5'; // 일정 시간이상 발견 시 정지 명령
             }
-            if (fire_time > 3.)
+            if (fire_time > 5.)
             {
-                char filename[256];
-                sprintf(filename, "capture/fire/%d%02d%02d_%02d%02d%02d.jpg", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
-                    tm.tm_hour, tm.tm_min, tm.tm_sec);
-                save_cv_jpg(show_img, filename);
+                send_buff[1] = '0'; // 정지 명령 해제
+                send_buff[2] = '2'; // fire 캡처 flag
                 fire_chk_time = get_wall_time();
             }
         }
